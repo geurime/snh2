@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>하이 - 성남수소충전소</title>
+    <meta name="description" content="성남수소충전소의 실시간 현황을 한눈에 확인하세요. 대기차량, T/T 잔압, 충전기 상태를 실시간으로 제공합니다.">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", Roboto, "Noto Sans KR", sans-serif;
+            line-height: 1.6;
+            color: #30313A;
+            background: #F0EEE9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: white;
+            padding: 16px 24px;
+            border-bottom: 1px solid #ddd;
+        }
+        .header-container {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: #FFA987;
+            text-decoration: none;
+        }
+        .header-nav {
+            display: flex;
+            gap: 20px;
+            list-style: none;
+        }
+        .header-nav a {
+            font-size: 14px;
+            color: #666;
+            text-decoration: none;
+        }
+        .header-nav a:hover {
+            color: #FFA987;
+        }
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 24px;
+            max-width: 480px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .logo-container {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 169, 135, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 32px;
+        }
+        .logo-container svg {
+            width: 56px;
+            height: 56px;
+            color: #FFA987;
+        }
+        .title {
+            font-size: 36px;
+            font-weight: 700;
+            color: #FFA987;
+            margin-bottom: 8px;
+        }
+        .tagline {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 40px;
+        }
+        .features {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .feature-card {
+            background: white;
+            padding: 16px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .feature-icon {
+            width: 44px;
+            height: 44px;
+            background: rgba(255, 169, 135, 0.15);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 20px;
+        }
+        .feature-text h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #30313A;
+            margin-bottom: 2px;
+        }
+        .feature-text p {
+            font-size: 13px;
+            color: #666;
+            margin: 0;
+        }
+        .support-section {
+            background: #30313A;
+            padding: 48px 24px;
+            text-align: center;
+        }
+        .support-section h2 {
+            font-size: 22px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 16px;
+        }
+        .support-section > p {
+            font-size: 14px;
+            color: rgba(255,255,255,0.7);
+            max-width: 400px;
+            margin: 0 auto 28px;
+        }
+        .support-email {
+            display: inline-block;
+            background: rgba(255, 169, 135, 0.2);
+            color: #FFA987;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .support-email:hover {
+            background: rgba(255, 169, 135, 0.3);
+        }
+        .footer {
+            background: #F0EEE9;
+            padding: 40px 24px 32px;
+            border-top: 1px solid #ddd;
+        }
+        .footer-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 32px;
+            margin-bottom: 24px;
+        }
+        .footer-info h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: #30313A;
+            margin-bottom: 16px;
+        }
+        .footer-info ul {
+            list-style: none;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.9;
+        }
+        .footer-info li strong {
+            color: #30313A;
+            font-weight: 600;
+        }
+        .footer-links h4 {
+            font-size: 14px;
+            font-weight: 700;
+            color: #30313A;
+            margin-bottom: 12px;
+        }
+        .footer-links ul {
+            list-style: none;
+        }
+        .footer-links a {
+            font-size: 13px;
+            color: #666;
+            text-decoration: none;
+            line-height: 2;
+            display: block;
+        }
+        .footer-links a:hover {
+            color: #FFA987;
+        }
+        .footer-bottom {
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+        }
+        @media (max-width: 600px) {
+            .main {
+                padding: 40px 20px;
+            }
+            .footer-content {
+                flex-direction: column;
+                gap: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-container">
+            <a href="/" class="header-logo">하이</a>
+            <ul class="header-nav">
+                <li><a href="/privacy-policy.html">개인정보처리방침</a></li>
+            </ul>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="logo-container">
+            <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m12 14 4-4"/>
+                <path d="M3.34 19a10 10 0 1 1 17.32 0"/>
+            </svg>
+        </div>
+
+        <h1 class="title">하이</h1>
+        <p class="tagline">성남수소충전소 실시간 현황</p>
+
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">🚗</div>
+                <div class="feature-text">
+                    <h3>실시간 대기 현황</h3>
+                    <p>승용/버스 대기차량과 예상 대기시간 확인</p>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">⛽</div>
+                <div class="feature-text">
+                    <h3>충전기 상태</h3>
+                    <p>A/B 충전기 운영 상태 실시간 확인</p>
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <div class="feature-text">
+                    <h3>T/T 현황</h3>
+                    <p>잔압 및 T/T 입고 일정 확인</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <section class="support-section">
+        <h2>도움이 필요하신가요?</h2>
+        <p>앱 사용 중 문제가 있거나 문의사항이 있으시면 아래로 연락해 주세요.</p>
+        <a href="mailto:support@geurime.com" class="support-email">support@geurime.com</a>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <h3>하이 (H2)</h3>
+                    <p style="font-size: 13px; color: #666; margin-bottom: 16px;">성남수소충전소 앱</p>
+                    <h4 style="font-size: 14px; font-weight: 600; color: #30313A; margin-bottom: 12px;">사업자 정보</h4>
+                    <ul>
+                        <li><strong>상호명:</strong> 그리메</li>
+                        <li><strong>대표자:</strong> 김강풍</li>
+                        <li><strong>사업자등록번호:</strong> 846-01-03434</li>
+                        <li><strong>주소:</strong> 경기도 성남시 분당구 서현로 210번길 1,<br>　　　4층 405-아14호 (서현동, 보람코아)</li>
+                        <li><strong>연락처:</strong> 010-6403-0113</li>
+                        <li><strong>이메일:</strong> support@geurime.com</li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>서비스</h4>
+                    <ul>
+                        <li><a href="/privacy-policy.html">개인정보처리방침</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                &copy; 2026 하이. All rights reserved.
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

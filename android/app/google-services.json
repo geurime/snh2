@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "259926995684",
+    "project_id": "snh2-89e3b",
+    "storage_bucket": "snh2-89e3b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:259926995684:android:40562c7b6a36b0de6472f1",
+        "android_client_info": {
+          "package_name": "com.geurime.snh2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBuDLPFmDdacVPSRJlecV4QLP1lrBGkYdY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
