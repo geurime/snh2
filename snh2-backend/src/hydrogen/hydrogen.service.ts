@@ -370,9 +370,10 @@ export class HydrogenService implements OnModuleInit {
 
   /**
    * 예상 대기시간 계산 (후보정 방식)
+   * "내가 지금 가면 몇 분 기다려야 하나"를 계산
    * - 충전기 0대: null 반환 (앱에서 "-" 표시)
    * - 빈 충전기 있음: 0분
-   * - 충전기별 남은 시간 + 대기열 시간
+   * - 충전기별 남은 시간 + 대기열 시뮬레이션
    */
   async getEstimatedWaitTime(): Promise<number | null> {
     const now = new Date();
@@ -386,12 +387,12 @@ export class HydrogenService implements OnModuleInit {
       return null;
     }
 
-    // 대기 없음
+    // 대기 없음: 바로 충전 가능
     if (totalWaiting === 0) {
       return 0;
     }
 
-    // 빈 충전기 있음 → 대기 0분
+    // 빈 충전기 있음: 바로 충전 가능
     if (totalWaiting < availableChargers) {
       return 0;
     }
@@ -400,21 +401,7 @@ export class HydrogenService implements OnModuleInit {
     const remainingA = this.getChargerRemainingTime(this.chargerA, now);
     const remainingB = this.getChargerRemainingTime(this.chargerB, now);
 
-    // 먼저 끝나는 충전기 시간 (모르면 추정)
-    let firstRemaining: number;
-    if (remainingA !== null && remainingB !== null) {
-      // 둘 다 알면 더 빨리 끝나는 거
-      firstRemaining = Math.min(remainingA, remainingB);
-    } else if (remainingA !== null) {
-      firstRemaining = remainingA;
-    } else if (remainingB !== null) {
-      firstRemaining = remainingB;
-    } else {
-      // 둘 다 모름: 승용 있으면 승용 기준, 없으면 버스 기준
-      firstRemaining = cars > 0 ? CAR_CHARGE_TIME : BUS_CHARGE_TIME;
-    }
-
-    // 대기열 계산
+    // 충전 중인 차량 파악
     let chargingCars = 0;
     let chargingBuses = 0;
     if (this.chargerA.type === 'car') chargingCars++;
@@ -425,7 +412,6 @@ export class HydrogenService implements OnModuleInit {
     // 모르는 충전기 → 비율로 추정
     const unknownChargers = (this.chargerA.type === null ? 1 : 0) + (this.chargerB.type === null ? 1 : 0);
     if (unknownChargers > 0 && totalWaiting >= availableChargers) {
-      // 대기 중인 타입 비율로 추정
       const carRatio = cars / totalWaiting;
       const estimatedCars = Math.round(unknownChargers * carRatio);
       chargingCars += estimatedCars;
@@ -435,19 +421,51 @@ export class HydrogenService implements OnModuleInit {
     // 대기열: 전체에서 충전 중인 차량 제외
     const queuedCars = Math.max(0, cars - chargingCars);
     const queuedBuses = Math.max(0, buses - chargingBuses);
-    const queueTotal = queuedCars + queuedBuses;
 
-    // 충전기 꽉 참 (대기열 없음): 먼저 끝나는 충전기 시간만
-    if (queueTotal === 0) {
-      return Math.round(firstRemaining);
+    // 대기열 배열 생성 (각 차량의 충전 시간)
+    // 승용차 먼저, 버스 나중 (FIFO 가정)
+    const queue: number[] = [];
+    for (let i = 0; i < queuedCars; i++) queue.push(CAR_CHARGE_TIME);
+    for (let i = 0; i < queuedBuses; i++) queue.push(BUS_CHARGE_TIME);
+    // "나" 추가 (승용차로 가정)
+    queue.push(CAR_CHARGE_TIME);
+
+    // 충전기 남은 시간 배열 생성
+    const chargers: number[] = [];
+    if (availableChargers >= 1) {
+      // remainingA가 null이면 타입에 따라 기본값 사용
+      const defaultA = this.chargerA.type === 'bus' ? BUS_CHARGE_TIME : CAR_CHARGE_TIME;
+      chargers.push(remainingA ?? defaultA);
+    }
+    if (availableChargers >= 2) {
+      const defaultB = this.chargerB.type === 'bus' ? BUS_CHARGE_TIME : CAR_CHARGE_TIME;
+      chargers.push(remainingB ?? defaultB);
     }
 
-    // 대기열 있음: 먼저 끝나는 시간 + 대기열 시간
-    const queueTime = Math.ceil(
-      (queuedCars * CAR_CHARGE_TIME + queuedBuses * BUS_CHARGE_TIME) / availableChargers
-    );
+    // 시뮬레이션: "나"가 충전기에 배치될 때까지
+    let time = 0;
+    while (queue.length > 0) {
+      // 가장 빨리 끝나는 충전기 찾기
+      const minRemaining = Math.min(...chargers);
+      const minIndex = chargers.indexOf(minRemaining);
 
-    return Math.round(firstRemaining + queueTime);
+      // 시간 경과
+      time += minRemaining;
+      for (let i = 0; i < chargers.length; i++) {
+        chargers[i] -= minRemaining;
+      }
+
+      // 다음 대기 차량 배치
+      const nextVehicle = queue.shift()!;
+      chargers[minIndex] = nextVehicle;
+
+      // 마지막 대기 차량("나")이 배치되면 종료
+      if (queue.length === 0) {
+        return Math.round(time);
+      }
+    }
+
+    return Math.round(time);
   }
 
   private parseNumber(value: any): number | null {
