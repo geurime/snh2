@@ -6,9 +6,9 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'constants/colors.dart';
 import 'providers/station_provider.dart';
 import 'providers/admin_provider.dart';
-import 'screens/home_screen.dart';
+import 'screens/home/home_screen.dart';
 import 'screens/info_screen.dart';
-import 'screens/admin_screen.dart';
+import 'screens/admin/admin_screen.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
