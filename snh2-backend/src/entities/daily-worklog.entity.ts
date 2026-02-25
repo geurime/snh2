@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 
 // T/T 입출고 기록
 export interface TTInOutRecord {
@@ -20,6 +20,7 @@ export class DailyWorklogEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Index()
   @Column({ type: 'date' })
   date: string;
 

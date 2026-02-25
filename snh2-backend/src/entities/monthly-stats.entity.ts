@@ -1,6 +1,7 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, Index } from 'typeorm';
 
 @Entity('monthly_stats')
+@Index(['year', 'month'])
 export class MonthlyStatsEntity {
   @PrimaryGeneratedColumn()
   id: number;

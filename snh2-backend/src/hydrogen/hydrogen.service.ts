@@ -7,6 +7,7 @@ import { TTService } from '../tt/tt.service';
 import { StationService } from '../station/station.service';
 import { RecordsService } from '../records/records.service';
 import { ChargerStatus, TTStatus } from '../entities';
+import { isBusinessHours, getKSTDate, getKSTTime } from '../common/utils/date.util';
 
 // 충전 시간 상수 (분)
 const CAR_CHARGE_TIME = 5;
@@ -30,6 +31,16 @@ export interface StationStatus {
   lastUpdated: string | null;
   isOperating: boolean;
   cachedAt: string;
+}
+
+// H2nbiz API 응답 타입
+interface H2nbizStationItem {
+  chrstnMno: string;
+  chrstnNm: string;
+  waitVhcleAlgeCnt: string | number | null;
+  waitCarAlgeCnt: string | number | null;
+  waitBusAlgeCnt: string | number | null;
+  operSttusNm: string;
 }
 
 @Injectable()
@@ -75,16 +86,7 @@ export class HydrogenService implements OnModuleInit {
   }
 
   private isOperatingHours(): boolean {
-    const now = new Date();
-    // KST = UTC + 9
-    const kstHour = (now.getUTCHours() + 9) % 24;
-    const kstMinute = now.getUTCMinutes();
-    const kstTime = kstHour * 60 + kstMinute; // 분 단위로 변환
-
-    const startTime = 7 * 60; // 07:00 = 420분
-    const endTime = 20 * 60 + 30; // 20:30 = 1230분
-
-    return kstTime >= startTime && kstTime <= endTime;
+    return isBusinessHours(7, 20, 30);
   }
 
   async fetchStationStatus(): Promise<void> {
@@ -111,7 +113,7 @@ export class HydrogenService implements OnModuleInit {
       }
 
       const station = listData.find(
-        (item: any) => item.chrstnMno === this.targetStationCode,
+        (item: H2nbizStationItem) => item.chrstnMno === this.targetStationCode,
       );
 
       if (!station) {
@@ -468,11 +470,11 @@ export class HydrogenService implements OnModuleInit {
     return Math.round(time);
   }
 
-  private parseNumber(value: any): number | null {
+  private parseNumber(value: string | number | null | undefined): number | null {
     if (value === null || value === undefined || value === '') {
       return null;
     }
-    const num = parseInt(value, 10);
+    const num = typeof value === 'number' ? value : parseInt(value, 10);
     return isNaN(num) ? null : num;
   }
 
@@ -521,10 +523,10 @@ export class HydrogenService implements OnModuleInit {
       }
 
       // 잔압 저장
-      const today = this.getKSTDate();
+      const today = getKSTDate();
       await this.recordsService.addTTChange(today, {
         record: {
-          time: this.getKSTTime(),
+          time: getKSTTime(),
           direction,
           meterValue: 0,
           monthlyIndex: 0,
@@ -538,17 +540,4 @@ export class HydrogenService implements OnModuleInit {
     }
   }
 
-  private getKSTDate(): string {
-    const now = new Date();
-    const kstOffset = 9 * 60;
-    const kstTime = new Date(now.getTime() + kstOffset * 60 * 1000);
-    return kstTime.toISOString().split('T')[0];
-  }
-
-  private getKSTTime(): string {
-    const now = new Date();
-    const kstOffset = 9 * 60;
-    const kstTime = new Date(now.getTime() + kstOffset * 60 * 1000);
-    return kstTime.toISOString().split('T')[1].substring(0, 5);
-  }
 }

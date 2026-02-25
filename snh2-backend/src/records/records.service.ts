@@ -5,6 +5,7 @@ import { Cron } from '@nestjs/schedule';
 import { DailyMealEntity, SalesRecordEntity, DailyWorklogEntity, TTInOutRecord, TTChangeRecord, MonthlyStatsEntity } from '../entities';
 import { UpdateMealDto, UpdateSalesDto, MonthlySalesStatsDto, DailySalesDto } from './dto/records.dto';
 import { AddTTInOutDto, AddTTChangeDto, UpdateWorklogNotesDto, UpdateWorklogDto, MonthlyPressureStatsDto, MonthlyLossStatsDto } from './dto/worklog.dto';
+import { getKSTDate, getKSTNow, getLastDayOfMonth } from '../common/utils/date.util';
 
 @Injectable()
 export class RecordsService {
@@ -31,20 +32,13 @@ export class RecordsService {
     await this.mealRepo.save(meal);
   }
 
-  private getKSTDate(): string {
-    const now = new Date();
-    const kstOffset = 9 * 60; // KST = UTC+9
-    const kstTime = new Date(now.getTime() + kstOffset * 60 * 1000);
-    return kstTime.toISOString().split('T')[0];
-  }
-
   // 단일 레코드 유지 (id=1)
   private async getOrCreateMeal(): Promise<DailyMealEntity> {
     let meal = await this.mealRepo.findOne({ where: { id: 1 } });
     if (!meal) {
       meal = await this.mealRepo.save({
         id: 1,
-        date: this.getKSTDate(),
+        date: getKSTDate(),
         lunch: null,
         dinner: null,
       });
@@ -68,7 +62,7 @@ export class RecordsService {
     }
 
     // 업데이트할 때 날짜도 갱신
-    meal.date = this.getKSTDate();
+    meal.date = getKSTDate();
 
     return this.mealRepo.save(meal);
   }
@@ -114,7 +108,7 @@ export class RecordsService {
   }
 
   async getTodayWorklog(): Promise<DailyWorklogEntity> {
-    const today = this.getKSTDate();
+    const today = getKSTDate();
     return this.getOrCreateWorklog(today);
   }
 
@@ -186,7 +180,7 @@ export class RecordsService {
   async getMonthlyPressureStats(year: number, month: number): Promise<MonthlyPressureStatsDto> {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
     // 해당 월의 마지막 날 계산 (다음 달 0일 = 이번 달 마지막 날)
-    const lastDay = new Date(year, month, 0).getDate();
+    const lastDay = getLastDayOfMonth(year, month);
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     const worklogs = await this.worklogRepo.find({
@@ -219,16 +213,25 @@ export class RecordsService {
     };
   }
 
-  // 월별 평균 손실률 계산
+  /**
+   * 월별 평균 손실률 계산
+   *
+   * 손실률 공식: ((판매량 - 유량계차이) / 유량계차이) * 100
+   * - flowMeter: 누적 유량계 값 (어제 대비 오늘 차이 = 실제 사용량)
+   * - totalKg: 당일 판매량 (POS 기준)
+   * - 손실률이 음수면 유량계보다 적게 판매 (손실 발생)
+   *
+   * 예: 유량계 차이 100kg, 판매량 95kg → 손실률 -5%
+   */
   async getMonthlyLossStats(year: number, month: number): Promise<MonthlyLossStatsDto> {
-    // 전월 마지막 날부터 해당 월 마지막 날까지 조회 (전날 flowMeter 비교 위해)
+    // 전월 마지막 날부터 조회 (1일의 전날 flowMeter 필요)
     const prevMonth = month === 1 ? 12 : month - 1;
     const prevYear = month === 1 ? year - 1 : year;
     const prevLastDay = new Date(prevYear, prevMonth, 0).getDate();
     const prevMonthLastDate = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(prevLastDay).padStart(2, '0')}`;
 
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    const lastDay = new Date(year, month, 0).getDate();
+    const lastDay = getLastDayOfMonth(year, month);
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     // 전월 마지막 날 + 해당 월 전체 조회
@@ -292,7 +295,7 @@ export class RecordsService {
   // 월별 매출 통계
   async getMonthlySalesStats(year: number, month: number): Promise<MonthlySalesStatsDto> {
     const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-    const lastDay = new Date(year, month, 0).getDate();
+    const lastDay = getLastDayOfMonth(year, month);
     const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
     const salesRecords = await this.salesRepo.find({
@@ -394,14 +397,11 @@ export class RecordsService {
   // 월말 자동 월별 통계 저장 (매월 마지막 날 23:50 KST = UTC 14:50)
   @Cron('50 14 28-31 * *')
   async saveMonthlyStatsIfLastDay() {
-    const now = new Date();
-    const kstOffset = 9 * 60;
-    const kstTime = new Date(now.getTime() + kstOffset * 60 * 1000);
-
+    const kstTime = getKSTNow();
     const year = kstTime.getFullYear();
     const month = kstTime.getMonth() + 1;
     const today = kstTime.getDate();
-    const lastDay = new Date(year, month, 0).getDate();
+    const lastDay = getLastDayOfMonth(year, month);
 
     // 마지막 날인지 확인
     if (today !== lastDay) {

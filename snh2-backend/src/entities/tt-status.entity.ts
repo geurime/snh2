@@ -1,10 +1,11 @@
-import { Entity, Column, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, UpdateDateColumn, Index } from 'typeorm';
 
 @Entity('tt_status')
 export class TTStatusEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Index()
   @Column({ type: 'date' })
   date: string;
 

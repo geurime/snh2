@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TTStatusEntity } from '../entities';
 import { UpdateTTStatusDto, UpdateTTScheduleDto } from './dto/update-tt.dto';
+import { getKSTDate } from '../common/utils/date.util';
 
 @Injectable()
 export class TTService {
@@ -14,20 +15,12 @@ export class TTService {
     private readonly ttRepo: Repository<TTStatusEntity>,
   ) {}
 
-  private getKSTDate(offsetDays: number = 0): string {
-    const now = new Date();
-    const kstOffset = 9 * 60; // KST = UTC+9
-    const kstTime = new Date(now.getTime() + kstOffset * 60 * 1000);
-    kstTime.setDate(kstTime.getDate() + offsetDays);
-    return kstTime.toISOString().split('T')[0];
-  }
-
   private getTodayDate(): string {
-    return this.getKSTDate(0);
+    return getKSTDate(0);
   }
 
   private getTomorrowDate(): string {
-    return this.getKSTDate(1);
+    return getKSTDate(1);
   }
 
   async getStatusByDate(date: string): Promise<TTStatusEntity> {

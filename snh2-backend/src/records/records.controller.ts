@@ -1,18 +1,21 @@
-import { Controller, Get, Put, Post, Delete, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Put, Post, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { RecordsService } from './records.service';
 import { UpdateMealDto, UpdateSalesDto } from './dto/records.dto';
 import { AddTTInOutDto, AddTTChangeDto, UpdateWorklogNotesDto, UpdateWorklogDto } from './dto/worklog.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller()
 export class RecordsController {
   constructor(private readonly recordsService: RecordsService) {}
 
-  // Meal endpoints
+  // 공개 API
   @Get('meal/today')
   async getTodayMeal() {
     return this.recordsService.getTodayMeal();
   }
 
+  // 관리자 전용 API
+  @UseGuards(JwtAuthGuard)
   @Put('meal/today')
   async updateTodayMeal(@Body() dto: UpdateMealDto) {
     return this.recordsService.updateTodayMeal(dto);
@@ -47,6 +50,7 @@ export class RecordsController {
     return sales;
   }
 
+  @UseGuards(JwtAuthGuard)
   @Put('sales/:date')
   async updateSales(@Param('date') date: string, @Body() dto: UpdateSalesDto) {
     return this.recordsService.updateSales(date, dto);
@@ -80,31 +84,37 @@ export class RecordsController {
     return worklog;
   }
 
+  @UseGuards(JwtAuthGuard)
   @Put('worklog/:date')
   async updateWorklog(@Param('date') date: string, @Body() dto: UpdateWorklogDto) {
     return this.recordsService.updateWorklog(date, dto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('worklog/:date/tt-inout')
   async addTTInOut(@Param('date') date: string, @Body() dto: AddTTInOutDto) {
     return this.recordsService.addTTInOut(date, dto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete('worklog/:date/tt-inout/:index')
   async deleteTTInOut(@Param('date') date: string, @Param('index') index: string) {
     return this.recordsService.deleteTTInOut(date, parseInt(index, 10));
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('worklog/:date/tt-change')
   async addTTChange(@Param('date') date: string, @Body() dto: AddTTChangeDto) {
     return this.recordsService.addTTChange(date, dto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete('worklog/:date/tt-change/:index')
   async deleteTTChange(@Param('date') date: string, @Param('index') index: string) {
     return this.recordsService.deleteTTChange(date, parseInt(index, 10));
   }
 
+  @UseGuards(JwtAuthGuard)
   @Put('worklog/:date/notes')
   async updateWorklogNotes(@Param('date') date: string, @Body() dto: UpdateWorklogNotesDto) {
     return this.recordsService.updateWorklogNotes(date, dto);
