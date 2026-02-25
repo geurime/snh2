@@ -100,9 +100,16 @@
 ```
 lib/
 ├── main.dart              # 앱 진입점
-├── screens/               # 화면 컴포넌트 (7개)
-│   ├── home_screen.dart        # 홈 (실시간 현황, 대기차량, 잔압)
-│   ├── admin_screen.dart       # 관리자 (상태 입력, T/T 관리)
+├── screens/               # 화면 컴포넌트 (7개 메인 + 서브모듈)
+│   ├── home/                   # 홈 화면 모듈
+│   │   ├── home_screen.dart        # 메인 (실시간 현황, 대기차량, 잔압)
+│   │   ├── widgets/                # UI 위젯 (status_card, charger_card 등)
+│   │   ├── dialogs/                # 다이얼로그 (entry_guide, closed 등)
+│   │   └── skeletons/              # 로딩 스켈레톤
+│   ├── admin/                  # 관리자 화면 모듈
+│   │   ├── admin_screen.dart       # 메인 (상태 입력, T/T 관리)
+│   │   ├── widgets/                # UI 위젯 (charger_button, tt_status 등)
+│   │   └── modals/                 # 모달 (meal, sales_input, tt_input 등)
 │   ├── info_screen.dart        # 충전소 안내 (요금, 위치, 혜택)
 │   ├── faq_screen.dart         # 자주 묻는 질문
 │   ├── records_screen.dart     # 운영일지 (캘린더, T/T 기록)

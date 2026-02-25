@@ -58,6 +58,8 @@
 
 ```
 src/
+├── auth/               # 인증 (JWT Guard)
+├── common/             # 공통 유틸리티, 데코레이터
 ├── entities/           # TypeORM 엔티티
 │   ├── station-status.entity.ts
 │   ├── tt-status.entity.ts
@@ -67,6 +69,7 @@ src/
 │   ├── monthly-stats.entity.ts
 │   └── suggestion.entity.ts
 ├── hydrogen/           # 공공 API 연동
+├── migrations/         # DB 마이그레이션
 ├── station/            # 충전소 상태 관리
 ├── tt/                 # T/T 일정 관리
 ├── records/            # 매출, 업무일지
