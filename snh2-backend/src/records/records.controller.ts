@@ -43,13 +43,24 @@ export class RecordsController {
   async getSalesByDate(@Param('date') date: string) {
     const sales = await this.recordsService.getSalesByDate(date);
     if (!sales) {
-      return { date, totalKg: 0, totalVehicles: 0 };
+      return { date, totalKg: 0, totalVehicles: 0, flowMeter: null };
     }
-    return sales;
+    // decimal 타입이 문자열로 반환되므로 숫자로 변환
+    return {
+      ...sales,
+      flowMeter: sales.flowMeter !== null ? Number(sales.flowMeter) : null,
+      totalKg: Number(sales.totalKg) || 0,
+    };
   }
 
   @Put('sales/:date')
   async updateSales(@Param('date') date: string, @Body() dto: UpdateSalesDto) {
+    // 모든 값이 비어있거나 0이면 저장하지 않고 그냥 리턴
+    if ((dto.flowMeter === null || dto.flowMeter === undefined) &&
+        dto.totalKg === 0 &&
+        dto.totalVehicles === 0) {
+      return { date, totalKg: 0, totalVehicles: 0, flowMeter: null };
+    }
     return this.recordsService.updateSales(date, dto);
   }
 
