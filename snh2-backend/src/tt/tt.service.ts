@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TTStatusEntity } from '../entities';
-import { UpdateTTStatusDto, UpdateTTScheduleDto } from './dto/update-tt.dto';
+import { UpdateTTStatusDto } from './dto/update-tt.dto';
 import { getKSTDate } from '../common/utils/date.util';
 
 @Injectable()
@@ -56,26 +56,6 @@ export class TTService {
       status.currentIndex = dto.currentIndex;
     }
 
-    return this.ttRepo.save(status);
-  }
-
-  /**
-   * T/T 일정은 내일 날짜로 저장 (오후에 내일 일정 입력)
-   * 일정(시간)만 저장, totalCount/currentIndex는 별도 관리
-   */
-  async updateSchedule(dto: UpdateTTScheduleDto): Promise<TTStatusEntity> {
-    const tomorrow = this.getTomorrowDate();
-    const status = await this.getStatusByDate(tomorrow);
-    status.schedules = dto.schedules;
-    return this.ttRepo.save(status);
-  }
-
-  /**
-   * 특정 날짜의 T/T 일정 수정
-   */
-  async updateScheduleByDate(date: string, schedules: string[]): Promise<TTStatusEntity> {
-    const status = await this.getStatusByDate(date);
-    status.schedules = schedules;
     return this.ttRepo.save(status);
   }
 

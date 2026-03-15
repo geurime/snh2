@@ -1,6 +1,6 @@
-import { Controller, Get, Patch, Put, Body, Param } from '@nestjs/common';
+import { Controller, Get, Patch, Body, Param } from '@nestjs/common';
 import { TTService } from './tt.service';
-import { UpdateTTStatusDto, UpdateTTScheduleDto } from './dto/update-tt.dto';
+import { UpdateTTStatusDto } from './dto/update-tt.dto';
 
 @Controller('tt')
 export class TTController {
@@ -25,17 +25,4 @@ export class TTController {
   }
 
 
-  @Put('schedule')
-  async updateSchedule(@Body() dto: UpdateTTScheduleDto) {
-    return this.ttService.updateSchedule(dto);
-  }
-
-
-  @Put('schedule/:date')
-  async updateScheduleByDate(
-    @Param('date') date: string,
-    @Body() dto: UpdateTTScheduleDto,
-  ) {
-    return this.ttService.updateScheduleByDate(date, dto.schedules);
-  }
 }

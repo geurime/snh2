@@ -37,12 +37,13 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     // 월별 통계 로드
     final stats = await _api.getMonthlySalesStats(_selectedYear, _selectedMonth);
 
-    // 최근 7일 데이터 로드 (오늘 기준)
+    // 최근 7일 데이터 로드 (오늘 데이터 있으면 오늘까지, 없으면 어제까지)
     final today = DateTime.now();
-    final startDate = today.subtract(const Duration(days: 6));
-    final startStr = _formatDate(startDate);
-    final endStr = _formatDate(today);
-    final weekly = await _api.getSalesRange(startStr, endStr);
+    final todaySales = await _api.getSales(_formatDate(today));
+    final hasTodayData = (todaySales?['totalKg'] ?? 0).toDouble() > 0;
+    final endDate = hasTodayData ? today : today.subtract(const Duration(days: 1));
+    final startDate = endDate.subtract(const Duration(days: 6));
+    final weekly = await _api.getSalesRange(_formatDate(startDate), _formatDate(endDate));
 
     setState(() {
       _monthlyStats = stats;

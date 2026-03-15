@@ -21,5 +21,8 @@ logs/
 # OS
 .DS_Store
 
+# Firebase
+firebase-service-account.json
+
 # Test
 coverage/

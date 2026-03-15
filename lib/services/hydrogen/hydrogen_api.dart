@@ -36,61 +36,12 @@ class HydrogenApiService {
     }
   }
 
-  /// 특정 날짜 T/T 일정 조회
-  Future<TTScheduleData?> getTTScheduleByDate(String date) async {
-    try {
-      return await _client.get(
-        '/tt/$date',
-        fromJson: (data) => TTScheduleData.fromJson(data),
-      );
-    } on ApiException {
-      return null;
-    }
-  }
-
   /// 매출 기록 조회
   Future<Map<String, dynamic>?> getSales(String date) async {
     try {
       return await _client.get('/sales/$date');
     } on ApiException {
       return null;
-    }
-  }
-
-  /// 업무 일지 조회
-  Future<WorklogData?> getWorklog(String date) async {
-    try {
-      return await _client.get(
-        '/worklog/$date',
-        fromJson: (data) => WorklogData.fromJson(data),
-      );
-    } on ApiException {
-      return null;
-    }
-  }
-
-  /// 오늘 업무 일지 조회
-  Future<WorklogData?> getTodayWorklog() async {
-    try {
-      return await _client.get(
-        '/worklog/today',
-        fromJson: (data) => WorklogData.fromJson(data),
-      );
-    } on ApiException {
-      return null;
-    }
-  }
-
-  /// 특이사항 검색 (최근 3개월)
-  Future<List<NotesSearchResult>> searchNotes(String keyword) async {
-    try {
-      final data = await _client.get<List<dynamic>>(
-        '/worklog/search',
-        queryParameters: {'keyword': keyword},
-      );
-      return data?.map((e) => NotesSearchResult.fromJson(e)).toList() ?? [];
-    } on ApiException {
-      return [];
     }
   }
 
@@ -291,36 +242,6 @@ class HydrogenApiService {
     }
   }
 
-  /// 특정 날짜 T/T 일정 업데이트 (관리자 전용)
-  Future<bool> updateTTScheduleByDate(String date, List<String> schedules) async {
-    try {
-      return await _client.put(
-        '/tt/schedule/$date',
-        data: {'schedules': schedules},
-        requiresAuth: true,
-      );
-    } on ApiException {
-      return false;
-    }
-  }
-
-  /// 오늘의 식사 업데이트 (관리자 전용)
-  Future<bool> updateMeal({String? lunch, String? dinner}) async {
-    try {
-      final data = <String, String?>{};
-      if (lunch != null) data['lunch'] = lunch;
-      if (dinner != null) data['dinner'] = dinner;
-
-      return await _client.put(
-        '/meal/today',
-        data: data,
-        requiresAuth: true,
-      );
-    } on ApiException {
-      return false;
-    }
-  }
-
   /// 매출 기록 업데이트 (관리자 전용)
   Future<bool> updateSales(
       String date, double totalKg, int totalVehicles, {double? flowMeter}) async {
@@ -342,68 +263,4 @@ class HydrogenApiService {
     }
   }
 
-  /// T/T 입출고 기록 추가 (관리자 전용)
-  Future<bool> addTTInOut(String date, TTInOutRecord record) async {
-    try {
-      await _client.post(
-        '/worklog/$date/tt-inout',
-        data: {'record': record.toJson()},
-        requiresAuth: true,
-      );
-      return true;
-    } on ApiException {
-      return false;
-    }
-  }
-
-  /// T/T 입출고 기록 삭제 (관리자 전용)
-  Future<bool> deleteTTInOut(String date, int index) async {
-    try {
-      return await _client.delete(
-        '/worklog/$date/tt-inout/$index',
-        requiresAuth: true,
-      );
-    } on ApiException {
-      return false;
-    }
-  }
-
-  /// T/T 교체 기록 추가 (관리자 전용)
-  Future<bool> addTTChange(String date, TTChangeRecord record) async {
-    try {
-      await _client.post(
-        '/worklog/$date/tt-change',
-        data: {'record': record.toJson()},
-        requiresAuth: true,
-      );
-      return true;
-    } on ApiException {
-      return false;
-    }
-  }
-
-  /// T/T 교체 기록 삭제 (관리자 전용)
-  Future<bool> deleteTTChange(String date, int index) async {
-    try {
-      return await _client.delete(
-        '/worklog/$date/tt-change/$index',
-        requiresAuth: true,
-      );
-    } on ApiException {
-      return false;
-    }
-  }
-
-  /// 업무 일지 특이사항 업데이트 (관리자 전용)
-  Future<bool> updateWorklogNotes(String date, String? notes) async {
-    try {
-      return await _client.put(
-        '/worklog/$date/notes',
-        data: {'notes': notes},
-        requiresAuth: true,
-      );
-    } on ApiException {
-      return false;
-    }
-  }
 }

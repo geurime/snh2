@@ -12,12 +12,8 @@ import 'widgets/admin_header.dart';
 import 'widgets/quick_button.dart';
 import 'widgets/tt_status_section.dart';
 import 'widgets/station_status_section.dart';
-import 'widgets/meal_display.dart';
-import 'modals/meal_modal.dart';
 import 'modals/announcement_modal.dart';
-import 'modals/notes_modal.dart';
 import 'modals/sales_input_modal.dart';
-import 'modals/tt_input_modal.dart';
 import 'modals/tt_today_modal.dart';
 
 class AdminScreen extends StatefulWidget {
@@ -41,10 +37,6 @@ class _AdminScreenState extends State<AdminScreen> {
 
   List<String> _todaySchedules = [];
   int _ttTotalCount = 0;
-  List<String> _tomorrowSchedules = [];
-
-  String? _lunchMenu;
-  String? _dinnerMenu;
 
   double? _salesKg;
   int? _salesCount;
@@ -52,7 +44,6 @@ class _AdminScreenState extends State<AdminScreen> {
 
   MonthlyPressureStats? _pressureStats;
   MonthlyLossStats? _lossStats;
-  String? _todayNotes;
 
   int _titleTapCount = 0;
   DateTime? _lastTapTime;
@@ -69,7 +60,6 @@ class _AdminScreenState extends State<AdminScreen> {
     final status = await _apiService.getIntegratedStatus();
     final today = DateTime.now().toIso8601String().split('T')[0];
     final sales = await _apiService.getSales(today);
-    final worklog = await _apiService.getWorklog(today);
 
     final now = DateTime.now();
     final pressureStats =
@@ -88,10 +78,6 @@ class _AdminScreenState extends State<AdminScreen> {
 
         _todaySchedules = List.from(status.tt.schedules);
         _ttTotalCount = status.tt.totalCount;
-        _tomorrowSchedules = List.from(status.tomorrowTT.schedules);
-
-        _lunchMenu = status.meal.lunch;
-        _dinnerMenu = status.meal.dinner;
 
         _flowMeter = sales?['flowMeter']?.toDouble();
         _salesKg = sales?['totalKg']?.toDouble();
@@ -99,7 +85,6 @@ class _AdminScreenState extends State<AdminScreen> {
 
         _pressureStats = pressureStats;
         _lossStats = lossStats;
-        _todayNotes = worklog?.notes;
 
         _isLoading = false;
       });
@@ -428,149 +413,60 @@ class _AdminScreenState extends State<AdminScreen> {
         color: AppColors.card,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: QuickButton(
-                  icon: LucideIcons.gauge,
-                  label: 'T/T 설정',
-                  onTap: () => TTTodayModal.show(
-                    context,
-                    initialCount: _ttTotalCount,
-                    onSave: (count) => setState(() => _ttTotalCount = count),
-                  ),
-                ),
+          Expanded(
+            child: QuickButton(
+              icon: LucideIcons.gauge,
+              label: 'T/T 설정',
+              onTap: () => TTTodayModal.show(
+                context,
+                initialCount: _ttTotalCount,
+                onSave: (count) => setState(() => _ttTotalCount = count),
               ),
-              Container(
-                width: 1,
-                height: 60,
-                color: AppColors.black.withOpacity(0.1),
-              ),
-              Expanded(
-                child: QuickButton(
-                  icon: LucideIcons.truck,
-                  label: 'T/T 일정',
-                  onTap: () => TTInputModal.show(
-                    context,
-                    todaySchedules: _todaySchedules,
-                    tomorrowSchedules: _tomorrowSchedules,
-                    onSave: (today, tomorrow) {
-                      setState(() {
-                        _todaySchedules = today;
-                        _tomorrowSchedules = tomorrow;
-                      });
-                    },
-                  ),
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 60,
-                color: AppColors.black.withOpacity(0.1),
-              ),
-              Expanded(
-                child: QuickButton(
-                  icon: LucideIcons.barChart,
-                  label: '마감 입력',
-                  onTap: () => SalesInputModal.show(
-                    context,
-                    initialFlowMeter: _flowMeter,
-                    initialSalesKg: _salesKg,
-                    initialSalesCount: _salesCount,
-                    onSave: (flowMeter, salesKg, salesCount) {
-                      setState(() {
-                        _flowMeter = flowMeter;
-                        _salesKg = salesKg;
-                        _salesCount = salesCount;
-                      });
-                    },
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: 16),
           Container(
-            height: 1,
+            width: 1,
+            height: 60,
             color: AppColors.black.withOpacity(0.1),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => MealModal.show(
-                    context,
-                    initialLunch: _lunchMenu,
-                    initialDinner: _dinnerMenu,
-                    onSave: (lunch, dinner) {
-                      setState(() {
-                        _lunchMenu = lunch;
-                        _dinnerMenu = dinner;
-                      });
-                    },
-                  ),
-                  child: (_lunchMenu == null && _dinnerMenu == null)
-                      ? QuickButton(
-                          icon: LucideIcons.utensils,
-                          label: '식사 입력',
-                          onTap: () => MealModal.show(
-                            context,
-                            initialLunch: _lunchMenu,
-                            initialDinner: _dinnerMenu,
-                            onSave: (lunch, dinner) {
-                              setState(() {
-                                _lunchMenu = lunch;
-                                _dinnerMenu = dinner;
-                              });
-                            },
-                          ),
-                        )
-                      : MealDisplay(
-                          lunchMenu: _lunchMenu,
-                          dinnerMenu: _dinnerMenu,
-                        ),
-                ),
+          Expanded(
+            child: QuickButton(
+              icon: LucideIcons.barChart,
+              label: '마감 입력',
+              onTap: () => SalesInputModal.show(
+                context,
+                initialFlowMeter: _flowMeter,
+                initialSalesKg: _salesKg,
+                initialSalesCount: _salesCount,
+                onSave: (flowMeter, salesKg, salesCount) {
+                  setState(() {
+                    _flowMeter = flowMeter;
+                    _salesKg = salesKg;
+                    _salesCount = salesCount;
+                  });
+                },
               ),
-              Container(
-                width: 1,
-                height: 60,
-                color: AppColors.black.withOpacity(0.1),
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 60,
+            color: AppColors.black.withOpacity(0.1),
+          ),
+          Expanded(
+            child: QuickButton(
+              icon: LucideIcons.megaphone,
+              label: '공지',
+              onTap: () => AnnouncementModal.show(
+                context,
+                initialAnnouncement: _announcement,
+                onSave: (announcement) {
+                  setState(() => _announcement = announcement);
+                },
               ),
-              Expanded(
-                child: QuickButton(
-                  icon: LucideIcons.megaphone,
-                  label: '공지',
-                  onTap: () => AnnouncementModal.show(
-                    context,
-                    initialAnnouncement: _announcement,
-                    onSave: (announcement) {
-                      setState(() => _announcement = announcement);
-                    },
-                  ),
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 60,
-                color: AppColors.black.withOpacity(0.1),
-              ),
-              Expanded(
-                child: QuickButton(
-                  icon: LucideIcons.clipboardList,
-                  label: '특이사항',
-                  onTap: () => NotesModal.show(
-                    context,
-                    initialNotes: _todayNotes,
-                    onSave: (notes) {
-                      setState(() => _todayNotes = notes);
-                    },
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),

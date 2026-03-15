@@ -100,26 +100,6 @@ describe('RecordsService', () => {
     });
   });
 
-  describe('updateTodayMeal', () => {
-    it('should update lunch', async () => {
-      mealRepo.findOne.mockResolvedValue({ ...mockMeal });
-      mealRepo.save.mockImplementation(async (meal) => meal as DailyMealEntity);
-
-      const result = await service.updateTodayMeal({ lunch: '새 점심' });
-
-      expect(result.lunch).toBe('새 점심');
-    });
-
-    it('should update dinner', async () => {
-      mealRepo.findOne.mockResolvedValue({ ...mockMeal });
-      mealRepo.save.mockImplementation(async (meal) => meal as DailyMealEntity);
-
-      const result = await service.updateTodayMeal({ dinner: '새 저녁' });
-
-      expect(result.dinner).toBe('새 저녁');
-    });
-  });
-
   describe('getSalesByDate', () => {
     it('should return sales for date', async () => {
       salesRepo.findOne.mockResolvedValue(mockSales);
@@ -177,38 +157,6 @@ describe('RecordsService', () => {
     });
   });
 
-  describe('addTTInOut', () => {
-    it('should add TT in/out record', async () => {
-      worklogRepo.findOne.mockResolvedValue({ ...mockWorklog, ttInOutRecords: [] });
-      worklogRepo.save.mockImplementation(async (w) => w as DailyWorklogEntity);
-
-      const result = await service.addTTInOut('2025-01-15', {
-        record: { time: '11:00', description: '새 입고' },
-      });
-
-      expect(result.ttInOutRecords).toHaveLength(1);
-      expect(result.ttInOutRecords[0].description).toBe('새 입고');
-    });
-  });
-
-  describe('deleteTTInOut', () => {
-    it('should delete TT in/out record by index', async () => {
-      worklogRepo.findOne.mockResolvedValue({
-        ...mockWorklog,
-        ttInOutRecords: [
-          { time: '09:00', description: '기록1' },
-          { time: '10:00', description: '기록2' },
-        ],
-      });
-      worklogRepo.save.mockImplementation(async (w) => w as DailyWorklogEntity);
-
-      const result = await service.deleteTTInOut('2025-01-15', 0);
-
-      expect(result.ttInOutRecords).toHaveLength(1);
-      expect(result.ttInOutRecords[0].description).toBe('기록2');
-    });
-  });
-
   describe('getMonthlyPressureStats', () => {
     it('should calculate average pressure', async () => {
       worklogRepo.find.mockResolvedValue([
@@ -254,17 +202,4 @@ describe('RecordsService', () => {
     });
   });
 
-  describe('searchNotes', () => {
-    it('should search notes with keyword', async () => {
-      worklogRepo.find.mockResolvedValue([
-        { ...mockWorklog, notes: '점검 완료' },
-        { ...mockWorklog, notes: '정기 점검 예정' },
-      ]);
-
-      const result = await service.searchNotes('점검');
-
-      expect(result).toHaveLength(2);
-      expect(result[0].notes).toContain('점검');
-    });
-  });
 });

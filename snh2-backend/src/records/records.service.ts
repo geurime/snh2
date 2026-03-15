@@ -1,11 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, Like, MoreThanOrEqual } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
-import { DailyMealEntity, SalesRecordEntity, DailyWorklogEntity, TTInOutRecord, TTChangeRecord, MonthlyStatsEntity } from '../entities';
-import { UpdateMealDto, UpdateSalesDto, MonthlySalesStatsDto, DailySalesDto } from './dto/records.dto';
-import { AddTTInOutDto, AddTTChangeDto, UpdateWorklogNotesDto, UpdateWorklogDto, MonthlyPressureStatsDto, MonthlyLossStatsDto } from './dto/worklog.dto';
+import { DailyMealEntity, SalesRecordEntity, DailyWorklogEntity, MonthlyStatsEntity } from '../entities';
+import { UpdateSalesDto, MonthlySalesStatsDto, DailySalesDto } from './dto/records.dto';
+import { AddTTChangeDto, UpdateWorklogDto, MonthlyPressureStatsDto, MonthlyLossStatsDto } from './dto/worklog.dto';
 import { getKSTDate, getKSTNow, getLastDayOfMonth } from '../common/utils/date.util';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class RecordsService {
@@ -20,6 +21,7 @@ export class RecordsService {
     private readonly worklogRepo: Repository<DailyWorklogEntity>,
     @InjectRepository(MonthlyStatsEntity)
     private readonly monthlyStatsRepo: Repository<MonthlyStatsEntity>,
+    private readonly notificationService: NotificationService,
   ) {}
 
   // KST 00:00 = UTC 15:00
@@ -51,22 +53,6 @@ export class RecordsService {
     return this.getOrCreateMeal();
   }
 
-  async updateTodayMeal(dto: UpdateMealDto): Promise<DailyMealEntity> {
-    const meal = await this.getOrCreateMeal();
-
-    if (dto.lunch !== undefined) {
-      meal.lunch = dto.lunch;
-    }
-    if (dto.dinner !== undefined) {
-      meal.dinner = dto.dinner;
-    }
-
-    // 업데이트할 때 날짜도 갱신
-    meal.date = getKSTDate();
-
-    return this.mealRepo.save(meal);
-  }
-
   // Sales
   async getSalesByDate(date: string): Promise<SalesRecordEntity | null> {
     return this.salesRepo.findOne({ where: { date } });
@@ -85,7 +71,17 @@ export class RecordsService {
     sales.totalKg = dto.totalKg;
     sales.totalVehicles = dto.totalVehicles;
 
-    return this.salesRepo.save(sales);
+    const saved = await this.salesRepo.save(sales);
+
+    // 마감 입력 알림 발송
+    if (dto.totalKg > 0) {
+      this.notificationService.sendToAll(
+        '마감 입력 완료',
+        `${dto.totalKg}kg · ${dto.totalVehicles}대`,
+      );
+    }
+
+    return saved;
   }
 
   // Worklog
@@ -112,17 +108,6 @@ export class RecordsService {
     return this.getOrCreateWorklog(today);
   }
 
-  async addTTInOut(date: string, dto: AddTTInOutDto): Promise<DailyWorklogEntity> {
-    const worklog = await this.getOrCreateWorklog(date);
-
-    if (!worklog.ttInOutRecords) {
-      worklog.ttInOutRecords = [];
-    }
-
-    worklog.ttInOutRecords.push(dto.record);
-    return this.worklogRepo.save(worklog);
-  }
-
   async addTTChange(date: string, dto: AddTTChangeDto): Promise<DailyWorklogEntity> {
     const worklog = await this.getOrCreateWorklog(date);
 
@@ -131,12 +116,6 @@ export class RecordsService {
     }
 
     worklog.ttChangeRecords.push(dto.record);
-    return this.worklogRepo.save(worklog);
-  }
-
-  async updateWorklogNotes(date: string, dto: UpdateWorklogNotesDto): Promise<DailyWorklogEntity> {
-    const worklog = await this.getOrCreateWorklog(date);
-    worklog.notes = dto.notes;
     return this.worklogRepo.save(worklog);
   }
 
@@ -151,26 +130,6 @@ export class RecordsService {
     }
     if (dto.notes !== undefined) {
       worklog.notes = dto.notes;
-    }
-
-    return this.worklogRepo.save(worklog);
-  }
-
-  async deleteTTInOut(date: string, index: number): Promise<DailyWorklogEntity> {
-    const worklog = await this.getOrCreateWorklog(date);
-
-    if (worklog.ttInOutRecords && index >= 0 && index < worklog.ttInOutRecords.length) {
-      worklog.ttInOutRecords.splice(index, 1);
-    }
-
-    return this.worklogRepo.save(worklog);
-  }
-
-  async deleteTTChange(date: string, index: number): Promise<DailyWorklogEntity> {
-    const worklog = await this.getOrCreateWorklog(date);
-
-    if (worklog.ttChangeRecords && index >= 0 && index < worklog.ttChangeRecords.length) {
-      worklog.ttChangeRecords.splice(index, 1);
     }
 
     return this.worklogRepo.save(worklog);
@@ -330,29 +289,6 @@ export class RecordsService {
       dailyAvgKg,
       dailyAvgVehicles,
     };
-  }
-
-  // 특이사항 검색 (최근 1년)
-  async searchNotes(keyword: string): Promise<{ date: string; notes: string }[]> {
-    // 1년 전 날짜 계산
-    const now = new Date();
-    const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-    const startDate = `${oneYearAgo.getFullYear()}-${String(oneYearAgo.getMonth() + 1).padStart(2, '0')}-${String(oneYearAgo.getDate()).padStart(2, '0')}`;
-
-    const worklogs = await this.worklogRepo.find({
-      where: {
-        date: MoreThanOrEqual(startDate),
-        notes: Like(`%${keyword}%`),
-      },
-      order: { date: 'DESC' },
-    });
-
-    return worklogs
-      .filter(w => w.notes)
-      .map(w => ({
-        date: w.date,
-        notes: w.notes!,
-      }));
   }
 
   // 날짜 범위 매출 조회 (그래프용)

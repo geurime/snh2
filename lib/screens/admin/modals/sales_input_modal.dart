@@ -72,6 +72,13 @@ class _SalesInputModalState extends State<SalesInputModal> {
     super.dispose();
   }
 
+  bool get _isFlowMeterInvalid {
+    final text = _flowMeterController.text.trim();
+    if (text.isEmpty) return false;
+    final intPart = text.split('.').first;
+    return intPart.length != 6;
+  }
+
   Future<void> _save() async {
     final flowMeter = double.tryParse(_flowMeterController.text);
     final salesKg = double.tryParse(_salesKgController.text);
@@ -89,6 +96,8 @@ class _SalesInputModalState extends State<SalesInputModal> {
       );
       return;
     }
+
+    if (_isFlowMeterInvalid) return;
 
     final success = await _apiService.updateSales(
       today,
@@ -159,6 +168,7 @@ class _SalesInputModalState extends State<SalesInputModal> {
               controller: _flowMeterController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
+              onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 hintText: '유량계 값 입력',
                 hintStyle: TextStyle(color: AppColors.black.withOpacity(0.4)),
@@ -172,6 +182,19 @@ class _SalesInputModalState extends State<SalesInputModal> {
                   horizontal: 16,
                   vertical: 14,
                 ),
+                suffixIcon: _isFlowMeterInvalid
+                    ? Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: Text(
+                          '6자리가 아닙니다',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.red.shade400,
+                          ),
+                        ),
+                      )
+                    : null,
+                suffixIconConstraints: const BoxConstraints(minHeight: 0),
               ),
             ),
             const SizedBox(height: 16),
