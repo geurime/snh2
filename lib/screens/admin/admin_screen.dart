@@ -5,7 +5,6 @@ import '../../constants/colors.dart';
 import '../../providers/admin_provider.dart';
 import '../../providers/station_provider.dart';
 import '../../services/hydrogen_api.dart';
-import '../records_screen.dart';
 import '../sales_report_screen.dart';
 
 import 'widgets/admin_header.dart';
@@ -450,24 +449,6 @@ class _AdminScreenState extends State<AdminScreen> {
               ),
             ),
           ),
-          Container(
-            width: 1,
-            height: 60,
-            color: AppColors.black.withOpacity(0.1),
-          ),
-          Expanded(
-            child: QuickButton(
-              icon: LucideIcons.megaphone,
-              label: '공지',
-              onTap: () => AnnouncementModal.show(
-                context,
-                initialAnnouncement: _announcement,
-                onSave: (announcement) {
-                  setState(() => _announcement = announcement);
-                },
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -485,16 +466,15 @@ class _AdminScreenState extends State<AdminScreen> {
         children: [
           Expanded(
             child: QuickButton(
-              icon: LucideIcons.pieChart,
-              label: '매출 추이',
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SalesReportScreen(),
-                  ),
-                );
-              },
+              icon: LucideIcons.megaphone,
+              label: '공지',
+              onTap: () => AnnouncementModal.show(
+                context,
+                initialAnnouncement: _announcement,
+                onSave: (announcement) {
+                  setState(() => _announcement = announcement);
+                },
+              ),
             ),
           ),
           Container(
@@ -504,13 +484,13 @@ class _AdminScreenState extends State<AdminScreen> {
           ),
           Expanded(
             child: QuickButton(
-              icon: LucideIcons.calendar,
-              label: '운영일지',
+              icon: LucideIcons.pieChart,
+              label: '매출 추이',
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const RecordsScreen(),
+                    builder: (context) => const SalesReportScreen(),
                   ),
                 );
               },

@@ -5,8 +5,8 @@ export class TTStatusEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Index()
-  @Column({ type: 'date' })
+  @Index({ unique: true })
+  @Column({ type: 'date', unique: true })
   date: string;
 
   @Column({ default: 0 })

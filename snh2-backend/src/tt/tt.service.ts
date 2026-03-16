@@ -27,15 +27,20 @@ export class TTService {
     let status = await this.ttRepo.findOne({ where: { date } });
 
     if (!status) {
-      status = await this.ttRepo.save({
-        date,
-        totalCount: 0,
-        currentIndex: 1,
-        schedules: [],
-      });
+      try {
+        status = await this.ttRepo.save({
+          date,
+          totalCount: 0,
+          currentIndex: 1,
+          schedules: [],
+        });
+      } catch {
+        // unique 제약으로 인한 중복 삽입 시 기존 레코드 반환
+        status = await this.ttRepo.findOne({ where: { date } });
+      }
     }
 
-    return status;
+    return status!;
   }
 
   async getTodayStatus(): Promise<TTStatusEntity> {

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../constants/colors.dart';
 import '../../../services/hydrogen_api.dart';
-import 'tt_schedule_modal.dart';
 
 class TTCard extends StatelessWidget {
   final IntegratedStatus? status;
@@ -19,13 +18,7 @@ class TTCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        if (status?.tt != null) {
-          TTScheduleModal.show(context, status!.tt);
-        }
-      },
-      child: Container(
+    return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -43,11 +36,6 @@ class TTCard extends StatelessWidget {
                     fontSize: 14,
                     color: AppColors.black.withOpacity(0.6),
                   ),
-                ),
-                Icon(
-                  Icons.chevron_right,
-                  size: 18,
-                  color: AppColors.black.withOpacity(0.4),
                 ),
               ],
             ),
@@ -121,7 +109,6 @@ class TTCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }

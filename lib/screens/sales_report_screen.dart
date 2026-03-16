@@ -224,6 +224,8 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                   _buildMonthlySummaryCard(),
                   const SizedBox(height: 20),
                   _buildChartCard(),
+                  const SizedBox(height: 20),
+                  _buildWeeklyListCard(),
                 ],
               ),
             ),
@@ -278,15 +280,6 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                '매출 현황',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.black,
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 20),
@@ -295,8 +288,8 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
               Expanded(
                 child: _buildStatItem(
                   icon: LucideIcons.fuel,
-                  label: '총 판매량',
-                  value: '${totalKg.toStringAsFixed(0)}kg',
+                  label: '일평균 판매량',
+                  value: '${dailyAvgKg.toStringAsFixed(0)}kg',
                 ),
               ),
               Container(
@@ -307,73 +300,11 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
               Expanded(
                 child: _buildStatItem(
                   icon: LucideIcons.car,
-                  label: '총 충전대수',
-                  value: '$totalVehicles대',
+                  label: '일평균 충전대수',
+                  value: '${dailyAvgVehicles.toStringAsFixed(0)}대',
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '일평균 ',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.black.withOpacity(0.5),
-                        ),
-                      ),
-                      Text(
-                        '${dailyAvgKg.toStringAsFixed(0)}kg',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.black,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 20,
-                  color: AppColors.black.withOpacity(0.15),
-                ),
-                Expanded(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '일평균 ',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.black.withOpacity(0.5),
-                        ),
-                      ),
-                      Text(
-                        '${dailyAvgVehicles.toStringAsFixed(0)}대',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.black,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -574,28 +505,64 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                     ),
                   ),
           ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                '판매량 (kg)',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.black.withOpacity(0.5),
-                ),
-              ),
-            ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeeklyListCard() {
+    final data = _weeklyData ?? [];
+    if (data.isEmpty) return const SizedBox.shrink();
+
+    final dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+    final reversed = data.reversed.toList();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '일별 상세',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.black,
+            ),
           ),
+          const SizedBox(height: 16),
+          ...reversed.map((d) {
+            final date = DateTime.parse(d.date);
+            final dayName = dayNames[date.weekday % 7];
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Text(
+                    '${date.month}/${date.day}($dayName)',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.black.withOpacity(0.6),
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${d.totalKg.toInt()}kg · ${d.totalVehicles}대',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.black,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );
