@@ -43,7 +43,7 @@ class _FaqScreenState extends State<FaqScreen> {
     ),
     FaqItem(
       question: '몇 %까지 충전되나요?',
-      answer: '안전을 위해 최대 92%까지 충전됩니다.\n수소 공급 상황에 따라 변동될 수 있습니다.',
+      answer: '안전을 위해 최대 95%까지 충전됩니다.\n수소 공급 상황에 따라 변동될 수 있습니다.',
     ),
     FaqItem(
       question: '예약할 수 있나요?',
@@ -197,7 +197,7 @@ class _FaqScreenState extends State<FaqScreen> {
     );
 
     // 강조할 단어들 색상 적용
-    final brandWords = ['삼성페이(MST)', '애플페이(NFC)', '92%', '19:50'];
+    final brandWords = ['삼성페이(MST)', '애플페이(NFC)', '95%', '19:50'];
     final List<TextSpan> spans = [];
     String remaining = answer;
 
