@@ -188,6 +188,13 @@ export class HydrogenService implements OnModuleInit {
     const buses = currentBuses ?? 0;
     const total = cars + buses;
 
+    const avail = await this.getChargerAvailability();
+    const availableChargers = this.chargerAvailableCount(avail);
+
+    // 점검/고장 충전기 상태 강제 리셋
+    if (!avail.a) this.chargerA = { type: null, startTime: null };
+    if (!avail.b) this.chargerB = { type: null, startTime: null };
+
     // 0, 0 상태: 충전기 비움
     if (total === 0) {
       this.chargerA = { type: null, startTime: null };
@@ -204,12 +211,11 @@ export class HydrogenService implements OnModuleInit {
       this.prevBuses = buses;
 
       // 초기 상태에서도 현재 대기 중인 차량을 충전기에 배치
-      const availableChargers = await this.getAvailableChargerCount();
       let remainingCars = cars;
       let remainingBuses = buses;
 
       // 충전기 A 배치
-      if (availableChargers >= 1 && (remainingCars > 0 || remainingBuses > 0)) {
+      if (avail.a && (remainingCars > 0 || remainingBuses > 0)) {
         if (remainingBuses > 0) {
           this.chargerA = { type: 'bus', startTime: now };
           remainingBuses--;
@@ -220,7 +226,7 @@ export class HydrogenService implements OnModuleInit {
       }
 
       // 충전기 B 배치
-      if (availableChargers >= 2 && (remainingCars > 0 || remainingBuses > 0)) {
+      if (avail.b && (remainingCars > 0 || remainingBuses > 0)) {
         if (remainingBuses > 0) {
           this.chargerB = { type: 'bus', startTime: now };
         } else {
@@ -231,8 +237,6 @@ export class HydrogenService implements OnModuleInit {
       this.logger.log(`Initial state: chargerA=${this.chargerA.type}, chargerB=${this.chargerB.type}`);
       return;
     }
-
-    const availableChargers = await this.getAvailableChargerCount();
     const prevTotal = this.prevCars + this.prevBuses;
 
     // 승용/버스 각각 변동 체크
@@ -243,18 +247,18 @@ export class HydrogenService implements OnModuleInit {
 
     // 차량이 빠진 경우: 후보정 (해당 타입 충전기 비움)
     for (let i = 0; i < carsExitedCount; i++) {
-      this.handleVehicleExit('car', now, cars, buses);
+      this.handleVehicleExit('car', now, cars, buses, avail);
     }
     for (let i = 0; i < busesExitedCount; i++) {
-      this.handleVehicleExit('bus', now, cars, buses);
+      this.handleVehicleExit('bus', now, cars, buses, avail);
     }
 
     // 차량이 들어온 경우: 빈 충전기에 배치
     for (let i = 0; i < carsEnteredCount; i++) {
-      this.handleVehicleEnter('car', now, availableChargers);
+      this.handleVehicleEnter('car', now, avail);
     }
     for (let i = 0; i < busesEnteredCount; i++) {
-      this.handleVehicleEnter('bus', now, availableChargers);
+      this.handleVehicleEnter('bus', now, avail);
     }
 
     this.prevCars = cars;
@@ -269,21 +273,24 @@ export class HydrogenService implements OnModuleInit {
     now: Date,
     remainingCars: number,
     remainingBuses: number,
+    avail: { a: boolean; b: boolean },
   ): void {
-    // 해당 타입 충전하던 충전기 찾아서 비움
-    if (this.chargerA.type === exitType) {
+    // 해당 타입 충전하던 가용 충전기 찾아서 비우고, 대기열에서 다음 차 배치
+    // 먼저 비운 후 estimateNextVehicle 호출해야 대기열 계산이 정확함
+    if (avail.a && this.chargerA.type === exitType) {
       this.logger.log(`Charger A: ${exitType} exited`);
-      // 대기열에서 새 차 들어감 (비율로 추정)
+      this.chargerA = { type: null, startTime: null };
       this.chargerA = this.estimateNextVehicle(now, remainingCars, remainingBuses);
-    } else if (this.chargerB.type === exitType) {
+    } else if (avail.b && this.chargerB.type === exitType) {
       this.logger.log(`Charger B: ${exitType} exited`);
+      this.chargerB = { type: null, startTime: null };
       this.chargerB = this.estimateNextVehicle(now, remainingCars, remainingBuses);
     } else {
-      // 모르는 상태에서 나감 → 아무 충전기나 업데이트
-      if (this.chargerA.type === null) {
+      // 모르는 상태에서 나감 → 가용한 빈 충전기만 업데이트
+      if (avail.a && this.chargerA.type === null) {
         this.logger.log(`Charger A: ${exitType} exited (was unknown)`);
         this.chargerA = this.estimateNextVehicle(now, remainingCars, remainingBuses);
-      } else if (this.chargerB.type === null) {
+      } else if (avail.b && this.chargerB.type === null) {
         this.logger.log(`Charger B: ${exitType} exited (was unknown)`);
         this.chargerB = this.estimateNextVehicle(now, remainingCars, remainingBuses);
       }
@@ -291,18 +298,18 @@ export class HydrogenService implements OnModuleInit {
   }
 
   /**
-   * 차량 들어옴 처리: 빈 충전기에 배치
+   * 차량 들어옴 처리: 가용 충전기에 배치
    */
   private handleVehicleEnter(
     enterType: 'car' | 'bus',
     now: Date,
-    availableChargers: number,
+    avail: { a: boolean; b: boolean },
   ): void {
-    // 빈 충전기에 배치
-    if (this.chargerA.type === null && availableChargers >= 1) {
+    // 가용한 빈 충전기에만 배치
+    if (avail.a && this.chargerA.type === null) {
       this.chargerA = { type: enterType, startTime: now };
       this.logger.log(`Charger A: ${enterType} entered`);
-    } else if (this.chargerB.type === null && availableChargers >= 2) {
+    } else if (avail.b && this.chargerB.type === null) {
       this.chargerB = { type: enterType, startTime: now };
       this.logger.log(`Charger B: ${enterType} entered`);
     }
@@ -343,18 +350,22 @@ export class HydrogenService implements OnModuleInit {
   }
 
   /**
-   * 가용 충전기 수 확인
+   * 충전기별 가용 여부 확인
    */
-  private async getAvailableChargerCount(): Promise<number> {
+  private async getChargerAvailability(): Promise<{ a: boolean; b: boolean }> {
     try {
       const status = await this.stationService.getStatus();
-      let count = 0;
-      if (status.chargerA === ChargerStatus.OPERATING) count++;
-      if (status.chargerB === ChargerStatus.OPERATING) count++;
-      return count;
+      return {
+        a: status.chargerA === ChargerStatus.OPERATING,
+        b: status.chargerB === ChargerStatus.OPERATING,
+      };
     } catch {
-      return 2; // 기본값
+      return { a: true, b: true }; // 기본값
     }
+  }
+
+  private chargerAvailableCount(avail: { a: boolean; b: boolean }): number {
+    return (avail.a ? 1 : 0) + (avail.b ? 1 : 0);
   }
 
   /**
@@ -379,7 +390,8 @@ export class HydrogenService implements OnModuleInit {
    */
   async getEstimatedWaitTime(): Promise<number | null> {
     const now = new Date();
-    const availableChargers = await this.getAvailableChargerCount();
+    const avail = await this.getChargerAvailability();
+    const availableChargers = this.chargerAvailableCount(avail);
     const cars = this.cachedStatus?.waitingCars ?? 0;
     const buses = this.cachedStatus?.waitingBuses ?? 0;
     const totalWaiting = cars + buses;
@@ -399,20 +411,24 @@ export class HydrogenService implements OnModuleInit {
       return 0;
     }
 
-    // 충전기별 남은 시간 계산
-    const remainingA = this.getChargerRemainingTime(this.chargerA, now);
-    const remainingB = this.getChargerRemainingTime(this.chargerB, now);
+    // 가용 충전기만 고려
+    const activeA = avail.a ? this.chargerA : { type: null as ChargingType, startTime: null };
+    const activeB = avail.b ? this.chargerB : { type: null as ChargingType, startTime: null };
 
-    // 충전 중인 차량 파악
+    // 충전기별 남은 시간 계산
+    const remainingA = avail.a ? this.getChargerRemainingTime(this.chargerA, now) : null;
+    const remainingB = avail.b ? this.getChargerRemainingTime(this.chargerB, now) : null;
+
+    // 충전 중인 차량 파악 (가용 충전기만)
     let chargingCars = 0;
     let chargingBuses = 0;
-    if (this.chargerA.type === 'car') chargingCars++;
-    if (this.chargerA.type === 'bus') chargingBuses++;
-    if (this.chargerB.type === 'car') chargingCars++;
-    if (this.chargerB.type === 'bus') chargingBuses++;
+    if (activeA.type === 'car') chargingCars++;
+    if (activeA.type === 'bus') chargingBuses++;
+    if (activeB.type === 'car') chargingCars++;
+    if (activeB.type === 'bus') chargingBuses++;
 
-    // 모르는 충전기 → 비율로 추정
-    const unknownChargers = (this.chargerA.type === null ? 1 : 0) + (this.chargerB.type === null ? 1 : 0);
+    // 모르는 충전기 → 비율로 추정 (가용 충전기 중에서만)
+    const unknownChargers = (avail.a && activeA.type === null ? 1 : 0) + (avail.b && activeB.type === null ? 1 : 0);
     if (unknownChargers > 0 && totalWaiting >= availableChargers) {
       const carRatio = cars / totalWaiting;
       const estimatedCars = Math.round(unknownChargers * carRatio);
@@ -432,15 +448,14 @@ export class HydrogenService implements OnModuleInit {
     // "나" 추가 (승용차로 가정)
     queue.push(CAR_CHARGE_TIME);
 
-    // 충전기 남은 시간 배열 생성
+    // 충전기 남은 시간 배열 생성 (가용 충전기만)
     const chargers: number[] = [];
-    if (availableChargers >= 1) {
-      // remainingA가 null이면 타입에 따라 기본값 사용
-      const defaultA = this.chargerA.type === 'bus' ? BUS_CHARGE_TIME : CAR_CHARGE_TIME;
+    if (avail.a) {
+      const defaultA = activeA.type === 'bus' ? BUS_CHARGE_TIME : CAR_CHARGE_TIME;
       chargers.push(remainingA ?? defaultA);
     }
-    if (availableChargers >= 2) {
-      const defaultB = this.chargerB.type === 'bus' ? BUS_CHARGE_TIME : CAR_CHARGE_TIME;
+    if (avail.b) {
+      const defaultB = activeB.type === 'bus' ? BUS_CHARGE_TIME : CAR_CHARGE_TIME;
       chargers.push(remainingB ?? defaultB);
     }
 
