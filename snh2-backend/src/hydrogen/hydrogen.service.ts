@@ -266,7 +266,19 @@ export class HydrogenService implements OnModuleInit {
   }
 
   /**
-   * 차량 나감 처리: 해당 타입 충전기 비우고, 대기열에서 새 차 들어감
+   * 충전기의 경과 비율 계산 (충전 완료에 얼마나 가까운지)
+   */
+  private getElapsedRatio(charger: ChargerState, now: Date): number {
+    if (charger.type === null || charger.startTime === null) return 0;
+    const chargeTime = charger.type === 'car' ? CAR_CHARGE_TIME : BUS_CHARGE_TIME;
+    const elapsedMinutes = (now.getTime() - charger.startTime.getTime()) / 60000;
+    return elapsedMinutes / chargeTime;
+  }
+
+  /**
+   * 차량 나감 처리
+   * - 경과시간 >= 70%: 충전 완료로 판단 → 충전기 리셋, 다음 차 배치
+   * - 경과시간 < 70%: 대기열에서 빠진 것으로 판단 → 충전기 안 건드림
    */
   private handleVehicleExit(
     exitType: 'car' | 'bus',
@@ -275,25 +287,35 @@ export class HydrogenService implements OnModuleInit {
     remainingBuses: number,
     avail: { a: boolean; b: boolean },
   ): void {
-    // 해당 타입 충전하던 가용 충전기 찾아서 비우고, 대기열에서 다음 차 배치
-    // 먼저 비운 후 estimateNextVehicle 호출해야 대기열 계산이 정확함
-    if (avail.a && this.chargerA.type === exitType) {
-      this.logger.log(`Charger A: ${exitType} exited`);
-      this.chargerA = { type: null, startTime: null };
-      this.chargerA = this.estimateNextVehicle(now, remainingCars, remainingBuses);
-    } else if (avail.b && this.chargerB.type === exitType) {
-      this.logger.log(`Charger B: ${exitType} exited`);
-      this.chargerB = { type: null, startTime: null };
-      this.chargerB = this.estimateNextVehicle(now, remainingCars, remainingBuses);
-    } else {
-      // 모르는 상태에서 나감 → 가용한 빈 충전기만 업데이트
-      if (avail.a && this.chargerA.type === null) {
-        this.logger.log(`Charger A: ${exitType} exited (was unknown)`);
-        this.chargerA = this.estimateNextVehicle(now, remainingCars, remainingBuses);
-      } else if (avail.b && this.chargerB.type === null) {
-        this.logger.log(`Charger B: ${exitType} exited (was unknown)`);
-        this.chargerB = this.estimateNextVehicle(now, remainingCars, remainingBuses);
+    const COMPLETION_THRESHOLD = 0.7;
+
+    // 해당 타입 충전하던 가용 충전기 찾기
+    const chargerAMatch = avail.a && this.chargerA.type === exitType;
+    const chargerBMatch = avail.b && this.chargerB.type === exitType;
+
+    if (chargerAMatch || chargerBMatch) {
+      // 매칭되는 충전기의 경과 비율 확인
+      const target = chargerAMatch ? this.chargerA : this.chargerB;
+      const ratio = this.getElapsedRatio(target, now);
+
+      if (ratio >= COMPLETION_THRESHOLD) {
+        // 충전 완료: 충전기 비우고 다음 차 배치
+        const label = chargerAMatch ? 'A' : 'B';
+        this.logger.log(`Charger ${label}: ${exitType} finished (${Math.round(ratio * 100)}% elapsed)`);
+        if (chargerAMatch) {
+          this.chargerA = { type: null, startTime: null };
+          this.chargerA = this.estimateNextVehicle(now, remainingCars, remainingBuses);
+        } else {
+          this.chargerB = { type: null, startTime: null };
+          this.chargerB = this.estimateNextVehicle(now, remainingCars, remainingBuses);
+        }
+      } else {
+        // 대기열에서 빠진 것으로 판단: 충전기 안 건드림
+        this.logger.log(`Queue ${exitType} left (charger only ${Math.round(ratio * 100)}% elapsed, keeping)`);
       }
+    } else {
+      // 충전기에 해당 타입 없음 → 대기열에서 빠진 것
+      this.logger.log(`Queue ${exitType} left (not on any charger)`);
     }
   }
 
