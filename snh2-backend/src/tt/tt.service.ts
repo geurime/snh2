@@ -89,14 +89,11 @@ export class TTService {
 
     // 압력이 70 이상 급상승하면 T/T 교체로 판단
     if (pressureJump >= this.PRESSURE_JUMP_THRESHOLD) {
-      // totalCount 범위 내에서만 증가
-      if (status.currentIndex < status.totalCount) {
-        status.currentIndex += 1;
-        changed = true;
-        this.logger.log(
-          `T/T change detected! Pressure: ${lastPressure} -> ${newPressure} (+${pressureJump}), Index: ${status.currentIndex}/${status.totalCount}`,
-        );
-      }
+      status.currentIndex += 1;
+      changed = true;
+      this.logger.log(
+        `T/T change detected! Pressure: ${lastPressure} -> ${newPressure} (+${pressureJump}), Index: ${status.currentIndex}/${status.totalCount}`,
+      );
     }
 
     // 항상 lastPressure 업데이트

@@ -16,9 +16,6 @@ import { NotificationModule } from '../notification/notification.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
-        signOptions: {
-          expiresIn: '24h', // 토큰 24시간 유효
-        },
       }),
     }),
     NotificationModule,

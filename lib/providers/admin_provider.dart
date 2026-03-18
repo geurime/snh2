@@ -31,8 +31,8 @@ class AdminProvider extends ChangeNotifier {
     // 토큰 복원
     if (_isAdminMode) {
       _accessToken = await _secureStorage.read(key: _tokenKey);
-      // 토큰이 없거나 만료되었으면 로그아웃 상태로 변경
-      if (_accessToken == null || _isTokenExpired(_accessToken!)) {
+      // 토큰이 없으면 로그아웃 상태로 변경
+      if (_accessToken == null) {
         _isAdminMode = false;
         _accessToken = null;
         await prefs.setBool(_adminModeKey, false);
