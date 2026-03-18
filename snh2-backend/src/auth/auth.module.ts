@@ -16,6 +16,9 @@ import { NotificationModule } from '../notification/notification.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: '3650d',
+        },
       }),
     }),
     NotificationModule,
