@@ -155,11 +155,15 @@ export class StationService implements OnModuleInit {
     };
   }
 
-  // T/T 상태 직접 설정 (초기화용)
-  async setTTStatus(ttAStatus: TTStatus, ttBStatus: TTStatus): Promise<StationStatusEntity> {
+  // T/T 상태 직접 설정 (보낸 값만 업데이트)
+  async setTTStatus(ttAStatus?: TTStatus, ttBStatus?: TTStatus): Promise<StationStatusEntity> {
     const status = await this.getStatus();
-    status.ttAStatus = ttAStatus;
-    status.ttBStatus = ttBStatus;
+    if (ttAStatus !== undefined) {
+      status.ttAStatus = ttAStatus;
+    }
+    if (ttBStatus !== undefined) {
+      status.ttBStatus = ttBStatus;
+    }
     return this.stationRepo.save(status);
   }
 }

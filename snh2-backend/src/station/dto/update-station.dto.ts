@@ -41,11 +41,13 @@ export class TTChangeDto {
 
 // T/T 상태 직접 설정 DTO
 export class SetTTStatusDto {
+  @IsOptional()
   @IsEnum(TTStatus)
-  ttAStatus: TTStatus;
+  ttAStatus?: TTStatus;
 
+  @IsOptional()
   @IsEnum(TTStatus)
-  ttBStatus: TTStatus;
+  ttBStatus?: TTStatus;
 }
 
 // T/T 상태 응답
