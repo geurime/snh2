@@ -9,6 +9,8 @@ import { getKSTDate } from '../common/utils/date.util';
 export class TTService {
   private readonly logger = new Logger(TTService.name);
   private readonly PRESSURE_JUMP_THRESHOLD = 70;
+  private readonly COOLDOWN_MS = 3 * 60 * 1000; // 교체 감지 후 3분 쿨다운
+  private lastChangeTime: number = 0;
 
   constructor(
     @InjectRepository(TTStatusEntity)
@@ -88,12 +90,20 @@ export class TTService {
     let changed = false;
 
     // 압력이 70 이상 급상승하면 T/T 교체로 판단
+    const now = Date.now();
     if (pressureJump >= this.PRESSURE_JUMP_THRESHOLD) {
-      status.currentIndex += 1;
-      changed = true;
-      this.logger.log(
-        `T/T change detected! Pressure: ${lastPressure} -> ${newPressure} (+${pressureJump}), Index: ${status.currentIndex}/${status.totalCount}`,
-      );
+      if (now - this.lastChangeTime < this.COOLDOWN_MS) {
+        this.logger.log(
+          `T/T change ignored (cooldown): ${lastPressure} -> ${newPressure} (+${pressureJump})`,
+        );
+      } else {
+        status.currentIndex += 1;
+        changed = true;
+        this.lastChangeTime = now;
+        this.logger.log(
+          `T/T change detected! Pressure: ${lastPressure} -> ${newPressure} (+${pressureJump}), Index: ${status.currentIndex}/${status.totalCount}`,
+        );
+      }
     }
 
     // 항상 lastPressure 업데이트
