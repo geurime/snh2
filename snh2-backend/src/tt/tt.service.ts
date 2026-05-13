@@ -8,7 +8,7 @@ import { getKSTDate } from '../common/utils/date.util';
 @Injectable()
 export class TTService {
   private readonly logger = new Logger(TTService.name);
-  private readonly PRESSURE_JUMP_THRESHOLD = 70;
+  private readonly PRESSURE_JUMP_THRESHOLD = 50;
   private readonly COOLDOWN_MS = 3 * 60 * 1000; // 교체 감지 후 3분 쿨다운
   private lastChangeTime: number = 0;
 
