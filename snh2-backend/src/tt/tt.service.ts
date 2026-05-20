@@ -10,7 +10,9 @@ export class TTService {
   private readonly logger = new Logger(TTService.name);
   private readonly PRESSURE_JUMP_THRESHOLD = 50;
   private readonly COOLDOWN_MS = 3 * 60 * 1000; // 교체 감지 후 3분 쿨다운
+  private readonly BUFFER_MS = 5 * 60 * 1000; // 잔압 롤링 버퍼 5분
   private lastChangeTime: number = 0;
+  private pressureBuffer: { ts: number; pressure: number }[] = [];
 
   constructor(
     @InjectRepository(TTStatusEntity)
@@ -68,7 +70,9 @@ export class TTService {
 
   /**
    * 잔압 변화 감지하여 T/T 교체 시 currentIndex 자동 증가
-   * 잔압이 +70 이상 급상승하면 새 T/T가 연결된 것으로 판단
+   * 잔압이 임계값(PRESSURE_JUMP_THRESHOLD) 이상 급상승하면 새 T/T가 연결된 것으로 판단.
+   * 교체 전 잔압은 직전값이 아닌 최근 5분 버퍼의 최소값을 사용
+   * (램프 중간값이 폴링에 잡혀 lastPressure가 오염되는 경우 대비).
    * @returns { changed: boolean, pressureBefore: number | null } 교체 감지 여부 및 교체 전 잔압
    */
   async checkPressureJump(newPressure: number): Promise<{ changed: boolean; pressureBefore: number | null }> {
@@ -88,21 +92,33 @@ export class TTService {
 
     const pressureJump = newPressure - lastPressure;
     let changed = false;
+    let pressureBefore: number | null = null;
 
-    // 압력이 70 이상 급상승하면 T/T 교체로 판단
+    // 롤링 버퍼 갱신 (오래된 항목 제거 후 현재 측정값 추가)
     const now = Date.now();
+    this.pressureBuffer = this.pressureBuffer.filter(
+      (p) => now - p.ts <= this.BUFFER_MS,
+    );
+    this.pressureBuffer.push({ ts: now, pressure: newPressure });
+
+    // 압력이 임계값 이상 급상승하면 T/T 교체로 판단
     if (pressureJump >= this.PRESSURE_JUMP_THRESHOLD) {
       if (now - this.lastChangeTime < this.COOLDOWN_MS) {
         this.logger.log(
           `T/T change ignored (cooldown): ${lastPressure} -> ${newPressure} (+${pressureJump})`,
         );
       } else {
+        // 직전값 대신 최근 5분 버퍼의 최소값을 진짜 "교체 전" 잔압으로 사용
+        // (15초 폴링 간격에 램프 중간값이 잡혀 lastPressure가 오염되는 케이스 보정)
+        pressureBefore = Math.min(...this.pressureBuffer.map((p) => p.pressure));
         status.currentIndex += 1;
         changed = true;
         this.lastChangeTime = now;
         this.logger.log(
-          `T/T change detected! Pressure: ${lastPressure} -> ${newPressure} (+${pressureJump}), Index: ${status.currentIndex}/${status.totalCount}`,
+          `T/T change detected! Pressure: ${lastPressure} -> ${newPressure} (+${pressureJump}), before=${pressureBefore}, Index: ${status.currentIndex}/${status.totalCount}`,
         );
+        // 감지 직후 버퍼 리셋 (다음 사이클에서 이번 high 값이 최소값에 오염되지 않도록)
+        this.pressureBuffer = [{ ts: now, pressure: newPressure }];
       }
     }
 
@@ -110,6 +126,6 @@ export class TTService {
     status.lastPressure = newPressure;
     await this.ttRepo.save(status);
 
-    return { changed, pressureBefore: changed ? lastPressure : null };
+    return { changed, pressureBefore };
   }
 }
