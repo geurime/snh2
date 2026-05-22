@@ -261,8 +261,50 @@ export class HydrogenService implements OnModuleInit {
       this.handleVehicleEnter('bus', now, avail);
     }
 
+    // 충전기 차종 추적을 실제 대기 수와 대조하여 유령 상태 제거
+    this.reconcileChargerTypes(cars, buses);
+
     this.prevCars = cars;
     this.prevBuses = buses;
+  }
+
+  /**
+   * 충전기 차종 추적을 실제 대기 수와 대조 (자가 교정)
+   *
+   * 모델상 cars/buses는 "충전 중 + 대기 중" 총합이므로,
+   * 특정 차종으로 잡힌 충전기 개수가 그 차종의 총수를 넘을 수 없다.
+   * 넘으면 과거 추적의 잔재(유령)이므로 초과분을 비운다.
+   * (예: 버스가 70% 미만에서 빠져 handleVehicleExit가 충전기를 유지한 경우,
+   *  buses=0이 되면 여기서 유령 버스가 제거됨)
+   */
+  private reconcileChargerTypes(cars: number, buses: number): void {
+    this.capChargerType('bus', buses);
+    this.capChargerType('car', cars);
+  }
+
+  private capChargerType(type: 'car' | 'bus', maxCount: number): void {
+    const matches: { label: 'A' | 'B'; startTime: Date | null }[] = [];
+    if (this.chargerA.type === type) {
+      matches.push({ label: 'A', startTime: this.chargerA.startTime });
+    }
+    if (this.chargerB.type === type) {
+      matches.push({ label: 'B', startTime: this.chargerB.startTime });
+    }
+    if (matches.length <= maxCount) return;
+
+    // 오래된(startTime 빠른) 것부터 비움 → 유령(stale) 우선 제거
+    matches.sort(
+      (a, b) => (a.startTime?.getTime() ?? 0) - (b.startTime?.getTime() ?? 0),
+    );
+    const clearCount = matches.length - maxCount;
+    for (let i = 0; i < clearCount; i++) {
+      const label = matches[i].label;
+      if (label === 'A') this.chargerA = { type: null, startTime: null };
+      else this.chargerB = { type: null, startTime: null };
+      this.logger.log(
+        `Reconcile: cleared phantom ${type} on charger ${label} (tracked ${matches.length} > actual ${maxCount})`,
+      );
+    }
   }
 
   /**
