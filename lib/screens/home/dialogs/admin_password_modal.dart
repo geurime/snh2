@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../constants/colors.dart';
+import '../../../constants/spacing.dart';
+import '../../../constants/typography.dart';
 import '../../../providers/admin_provider.dart';
+import '../../../widgets/pressable.dart';
+import '../../../widgets/sheet_header.dart';
 
+/// 제목을 7번 연타하면 열린다. 직원만 쓰는 숨은 진입점.
+///
+/// 다른 시트 넷과 같은 `SheetHeader`를 써서 형태를 통일한다.
 class AdminPasswordModal extends StatefulWidget {
   const AdminPasswordModal({super.key});
 
   static void show(BuildContext context) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.card,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
       ),
-      builder: (context) => const AdminPasswordModal(),
+      builder: (_) => const AdminPasswordModal(),
     );
   }
 
@@ -23,38 +30,36 @@ class AdminPasswordModal extends StatefulWidget {
 }
 
 class _AdminPasswordModalState extends State<AdminPasswordModal> {
-  final _passwordController = TextEditingController();
+  final _controller = TextEditingController();
+  bool _checking = false;
 
   @override
   void dispose() {
-    _passwordController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
-    final success = await context
-        .read<AdminProvider>()
-        .login(_passwordController.text);
+  void _notify(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: AppColors.gray900,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
 
+  Future<void> _login() async {
+    setState(() => _checking = true);
+    final success = await context.read<AdminProvider>().login(_controller.text);
     if (!mounted) return;
+    setState(() => _checking = false);
 
     if (success) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('관리자 모드가 활성화되었습니다'),
-          backgroundColor: AppColors.black,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _notify('관리자 모드를 켰어요');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('비밀번호가 일치하지 않습니다'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _notify('비밀번호가 맞지 않아요');
     }
   }
 
@@ -63,80 +68,59 @@ class _AdminPasswordModalState extends State<AdminPasswordModal> {
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 20,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          left: AppSpace.xl,
+          right: AppSpace.xl,
+          top: AppSpace.sm,
+          bottom: MediaQuery.of(context).viewInsets.bottom + AppSpace.xl,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.black.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
+            const SheetHeader(
+              title: '관리자 모드',
+              subtitle: '비밀번호를 입력해 주세요',
             ),
-            const SizedBox(height: 20),
-            Text(
-              '관리자 모드',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.black,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '비밀번호를 입력하세요',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.black.withOpacity(0.6),
-              ),
-            ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpace.xxl),
             TextField(
-              controller: _passwordController,
+              controller: _controller,
               obscureText: true,
               keyboardType: TextInputType.number,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 20,
+              autofocus: true,
+              onSubmitted: (_) => _login(),
+              style: AppText.number.copyWith(
+                color: AppColors.gray900,
                 letterSpacing: 8,
               ),
               decoration: InputDecoration(
-                hintText: '••••••••',
-                hintStyle: TextStyle(color: AppColors.black.withOpacity(0.3)),
                 filled: true,
-                fillColor: AppColors.background,
+                fillColor: AppColors.gray100,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: AppSpace.lg,
+                  vertical: AppSpace.lg,
+                ),
               ),
             ),
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: _handleLogin,
+            const SizedBox(height: AppSpace.xl),
+            Pressable(
+              onTap: _checking ? null : _login,
               child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                constraints: const BoxConstraints(minHeight: 52),
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(12),
+                  color: _checking ? AppColors.gray300 : AppColors.orange,
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                 ),
-                child: const Center(
-                  child: Text(
-                    '확인',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
+                child: Text(
+                  _checking ? '확인 중' : '확인',
+                  style: AppText.body.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.card,
                   ),
                 ),
               ),

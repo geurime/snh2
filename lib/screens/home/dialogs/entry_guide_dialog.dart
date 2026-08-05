@@ -1,18 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../constants/colors.dart';
+import '../../../constants/spacing.dart';
+import '../../../constants/typography.dart';
+import '../../../widgets/pressable.dart';
 
+/// 앱을 열면 처음 보는 화면.
+///
+/// 기존 고객도 안 들어오고 입구 앞에 서서 기다리는 일이 잦아서 띄운다.
+/// 즉 안내가 아니라 **행동을 바꾸려는 화면**이라, 콘 사진 두 장이 본문이다.
+///
+/// 색은 하나만 쓴다 — `입장 불가`에만. 가능한 쪽은 검정으로 두면
+/// 오렌지가 붙은 쪽이 "막힌 경우"라는 게 한눈에 갈린다.
 class EntryGuideDialog extends StatefulWidget {
   const EntryGuideDialog({super.key});
 
   static Future<void> show(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
-    final hideGuide = prefs.getBool('hideEntryGuide') ?? false;
-    if (!hideGuide && context.mounted) {
-      showDialog(
+    final hide = prefs.getBool('hideEntryGuide') ?? false;
+    if (!hide && context.mounted) {
+      showDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const EntryGuideDialog(),
+        builder: (_) => const EntryGuideDialog(),
       );
     }
   }
@@ -24,174 +34,183 @@ class EntryGuideDialog extends StatefulWidget {
 class _EntryGuideDialogState extends State<EntryGuideDialog> {
   bool _dontShowAgain = false;
 
+  Future<void> _close() async {
+    if (_dontShowAgain) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('hideEntryGuide', true);
+    }
+    if (mounted) Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: AppColors.card,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(AppSpace.card),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
               '진입 안내',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.black,
+              style: AppText.screenTitle.copyWith(
+                color: AppColors.gray900,
+                height: 1.1,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xs),
             Text(
               '입구의 콘 배치를 확인해주세요',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.black.withOpacity(0.6),
-              ),
+              style: AppText.body.copyWith(color: AppColors.gray600),
             ),
-            const SizedBox(height: 16),
-            Row(
+            const SizedBox(height: AppSpace.lg),
+            const Row(
               children: [
                 Expanded(
-                  child: _buildConeImage(
-                    'assets/cone_open.jpeg',
-                    '입장 가능',
-                    Colors.green,
+                  child: _Cone(
+                    asset: 'assets/cone_open.jpeg',
+                    label: '입장 가능',
+                    isBlocked: false,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: AppSpace.md),
                 Expanded(
-                  child: _buildConeImage(
-                    'assets/cone_blocked.jpeg',
-                    '입장 불가',
-                    Colors.red,
+                  child: _Cone(
+                    asset: 'assets/cone_blocked.jpeg',
+                    label: '입장 불가',
+                    isBlocked: true,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpace.lg),
             Text(
-              '콘이 없다면 양쪽 어디든 바로 진입!\n빈 충전기가 있으면 줄 서지 마시고 바로 들어오세요!',
+              '콘이 없으면 양쪽 어디든 바로 들어오세요.\n'
+              '빈 충전기가 있으면 줄 서지 않으셔도 됩니다.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.black.withOpacity(0.7),
-                height: 1.4,
+              style: AppText.body.copyWith(
+                color: AppColors.gray900,
+                height: 1.45,
               ),
             ),
-            const SizedBox(height: 16),
-            _buildDontShowAgainCheckbox(),
-            const SizedBox(height: 16),
-            _buildConfirmButton(),
+            const SizedBox(height: AppSpace.lg),
+            _DontShowAgain(
+              checked: _dontShowAgain,
+              onChanged: (v) => setState(() => _dontShowAgain = v),
+            ),
+            const SizedBox(height: AppSpace.md),
+            Pressable(
+              onTap: _close,
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 52),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.orange,
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
+                ),
+                child: Text(
+                  '확인',
+                  style: AppText.body.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.card,
+                  ),
+                ),
+              ),
+            ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConeImage(String asset, String label, Color color) {
-    return Column(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.asset(
-            asset,
-            fit: BoxFit.cover,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: color.shade700,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDontShowAgainCheckbox() {
-    return GestureDetector(
-      onTap: () => setState(() => _dontShowAgain = !_dontShowAgain),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              color: _dontShowAgain ? AppColors.primary : Colors.transparent,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(
-                color: _dontShowAgain
-                    ? AppColors.primary
-                    : AppColors.black.withOpacity(0.3),
-                width: 1.5,
-              ),
-            ),
-            child: _dontShowAgain
-                ? const Icon(Icons.check, size: 14, color: Colors.white)
-                : null,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '다시 보지 않기',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.black.withOpacity(0.6),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConfirmButton() {
-    return GestureDetector(
-      onTap: () async {
-        if (_dontShowAgain) {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setBool('hideEntryGuide', true);
-        }
-        if (mounted) Navigator.pop(context);
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Center(
-          child: Text(
-            '확인',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,
-            ),
-          ),
         ),
       ),
     );
   }
 }
 
-extension on Color {
-  Color get shade700 {
-    final hsl = HSLColor.fromColor(this);
-    return hsl.withLightness((hsl.lightness - 0.2).clamp(0.0, 1.0)).toColor();
+class _Cone extends StatelessWidget {
+  final String asset;
+  final String label;
+  final bool isBlocked;
+
+  const _Cone({
+    required this.asset,
+    required this.label,
+    required this.isBlocked,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.chip),
+          child: Image.asset(asset, fit: BoxFit.cover),
+        ),
+        const SizedBox(height: AppSpace.sm),
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpace.md,
+            vertical: AppSpace.xs + 2,
+          ),
+          decoration: BoxDecoration(
+            color: isBlocked ? AppColors.orangeTint : AppColors.gray100,
+            borderRadius: BorderRadius.circular(AppSpace.sm),
+          ),
+          child: Text(
+            label,
+            style: AppText.label.copyWith(
+              fontWeight: FontWeight.w700,
+              color: isBlocked ? AppColors.orangeText : AppColors.gray900,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DontShowAgain extends StatelessWidget {
+  final bool checked;
+  final ValueChanged<bool> onChanged;
+
+  const _DontShowAgain({required this.checked, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      scale: 0.97,
+      onTap: () => onChanged(!checked),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 48),
+        alignment: Alignment.center,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: AppMotion.of(context, AppMotion.fast),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: checked ? AppColors.orange : Colors.transparent,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: checked ? AppColors.orange : AppColors.gray300,
+                  width: 1.5,
+                ),
+              ),
+              child: checked
+                  ? const Icon(Icons.check, size: 15, color: AppColors.card)
+                  : null,
+            ),
+            const SizedBox(width: AppSpace.sm),
+            Text(
+              '다시 보지 않기',
+              style: AppText.body.copyWith(color: AppColors.gray600),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
