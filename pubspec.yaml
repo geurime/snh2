@@ -78,7 +78,6 @@ flutter:
 
   assets:
     - assets/map_icons/
-    - assets/splash_logo.png
     - assets/app_icon.png
     - assets/eonjewa_logo.png
     - assets/cone_blocked.jpeg
