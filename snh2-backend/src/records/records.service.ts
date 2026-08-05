@@ -6,7 +6,6 @@ import { DailyMealEntity, SalesRecordEntity, DailyWorklogEntity, MonthlyStatsEnt
 import { UpdateSalesDto, MonthlySalesStatsDto, DailySalesDto } from './dto/records.dto';
 import { AddTTChangeDto, UpdateWorklogDto, MonthlyPressureStatsDto, MonthlyLossStatsDto } from './dto/worklog.dto';
 import { getKSTDate, getKSTNow, getLastDayOfMonth } from '../common/utils/date.util';
-import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class RecordsService {
@@ -21,7 +20,6 @@ export class RecordsService {
     private readonly worklogRepo: Repository<DailyWorklogEntity>,
     @InjectRepository(MonthlyStatsEntity)
     private readonly monthlyStatsRepo: Repository<MonthlyStatsEntity>,
-    private readonly notificationService: NotificationService,
   ) {}
 
   // KST 00:00 = UTC 15:00
@@ -71,17 +69,9 @@ export class RecordsService {
     sales.totalKg = dto.totalKg;
     sales.totalVehicles = dto.totalVehicles;
 
-    const saved = await this.salesRepo.save(sales);
-
-    // 마감 입력 알림 발송
-    if (dto.totalKg > 0) {
-      this.notificationService.sendToAll(
-        '마감 입력 완료',
-        `${dto.totalKg}kg · ${dto.totalVehicles}대`,
-      );
-    }
-
-    return saved;
+    // 마감 보고는 앱이 카톡 공유로 보낸다. 대표가 단톡방에서 보길 원해서
+    // 푸시를 받아도 직원이 같은 내용을 손으로 또 쳐야 했다.
+    return this.salesRepo.save(sales);
   }
 
   // Worklog

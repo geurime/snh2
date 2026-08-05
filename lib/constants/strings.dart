@@ -100,6 +100,17 @@ abstract final class S {
   static const ttReady = '대기';
   static const ttInUse = '사용 중';
 
+  // ── 마감 공유 ──
+  // 대표가 단톡방에서 본다. 앱 밖으로 나가는 유일한 문구라 여기서 관리한다.
+  //
+  // kg은 정수로 쓴다 — 현장에서 소수점을 입력하지 않는데 `667.0kg`으로 나가면
+  // 정밀한 값처럼 읽힌다.
+  static String closingShare(DateTime date, double kg, int count) =>
+      '${date.month}월 ${date.day}일 마감\n'
+      '${kg.round()}kg · $count대';
+
+  static const closingShareTitle = '마감 보고 보내기';
+
   // ── 오류 ──
   static const loadFailedTitle = '정보를 불러오지 못했어요';
   static const loadFailedBody = '네트워크 상태를 확인하고 다시 시도해 주세요';

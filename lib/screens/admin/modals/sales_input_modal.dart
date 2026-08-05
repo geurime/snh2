@@ -4,6 +4,7 @@ import '../../../constants/spacing.dart';
 import '../../../constants/typography.dart';
 import '../../../widgets/pressable.dart';
 import '../../../widgets/sheet_header.dart';
+import '../../../services/closing_share.dart';
 import '../../../services/hydrogen_api.dart';
 
 class SalesInputModal extends StatefulWidget {
@@ -106,10 +107,13 @@ class _SalesInputModalState extends State<SalesInputModal> {
     final salesKg = double.tryParse(_salesKgController.text);
     final salesCount = int.tryParse(_salesCountController.text);
 
-    final today = DateTime.now().toIso8601String().split('T')[0];
+    final now = DateTime.now();
+    final today = now.toIso8601String().split('T')[0];
+
+    final messenger = ScaffoldMessenger.of(context);
 
     if (salesKg == null || salesCount == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(
           content: Text('판매량과 충전 대수를 입력해주세요'),
           backgroundColor: AppColors.gray900,
@@ -128,17 +132,28 @@ class _SalesInputModalState extends State<SalesInputModal> {
       flowMeter: flowMeter,
     );
 
-    if (success && mounted) {
-      widget.onSave(flowMeter, salesKg, salesCount);
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('마감 데이터가 저장되었습니다'),
-          backgroundColor: AppColors.gray900,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
+    if (!success || !mounted) return;
+
+    widget.onSave(flowMeter, salesKg, salesCount);
+
+    // 시트를 닫기 전에 띄운다. 닫고 나면 팝오버 기준이 될 위젯이 사라지고,
+    // 무엇보다 "저장했다"와 "보고했다"가 한 동작으로 이어져야 빼먹지 않는다.
+    await ClosingShare.send(
+      context,
+      date: now,
+      kg: salesKg,
+      count: salesCount,
+    );
+
+    if (!mounted) return;
+    Navigator.pop(context);
+    messenger.showSnackBar(
+      const SnackBar(
+        content: Text('마감 데이터가 저장되었습니다'),
+        backgroundColor: AppColors.gray900,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override

@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import '../services/hydrogen_api.dart';
 
 class AdminProvider extends ChangeNotifier {
@@ -40,8 +39,6 @@ class AdminProvider extends ChangeNotifier {
       } else {
         // API 서비스에 토큰 동기화
         HydrogenApiService().setAccessToken(_accessToken);
-        // FCM 토큰 재등록
-        await _registerFcmToken();
       }
     }
 
@@ -73,9 +70,6 @@ class AdminProvider extends ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool(_adminModeKey, true);
 
-        // FCM 토큰 등록
-        await _registerFcmToken();
-
         notifyListeners();
         return true;
       }
@@ -88,9 +82,6 @@ class AdminProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    // FCM 토큰 해제
-    await _unregisterFcmToken();
-
     _isAdminMode = false;
     _accessToken = null;
 
@@ -113,38 +104,6 @@ class AdminProvider extends ChangeNotifier {
       return false;
     }
     return !_isTokenExpired(_accessToken!);
-  }
-
-  Future<void> _registerFcmToken() async {
-    try {
-      final messaging = FirebaseMessaging.instance;
-      await messaging.requestPermission();
-      final fcmToken = await messaging.getToken();
-      if (fcmToken != null) {
-        await _dio.post(
-          '$_baseUrl/auth/fcm-token',
-          data: {'token': fcmToken},
-        );
-        debugPrint('[AdminProvider] FCM token registered');
-      }
-    } catch (e) {
-      debugPrint('[AdminProvider] FCM register error: $e');
-    }
-  }
-
-  Future<void> _unregisterFcmToken() async {
-    try {
-      final fcmToken = await FirebaseMessaging.instance.getToken();
-      if (fcmToken != null) {
-        await _dio.delete(
-          '$_baseUrl/auth/fcm-token',
-          data: {'token': fcmToken},
-        );
-        debugPrint('[AdminProvider] FCM token unregistered');
-      }
-    } catch (e) {
-      debugPrint('[AdminProvider] FCM unregister error: $e');
-    }
   }
 
   /// JWT 토큰 만료 여부 확인
