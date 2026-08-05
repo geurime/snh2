@@ -1,4 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
@@ -6,7 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { TTService } from '../tt/tt.service';
 import { StationService } from '../station/station.service';
 import { RecordsService } from '../records/records.service';
-import { ChargerStatus, TTStatus } from '../entities';
+import { ChargerStatus, TTStatus, ChargerTrackingEntity } from '../entities';
 import { isBusinessHours, getKSTDate, getKSTTime } from '../common/utils/date.util';
 
 // 충전 시간 상수 (분)
@@ -68,9 +70,13 @@ export class HydrogenService implements OnModuleInit {
     private readonly ttService: TTService,
     private readonly stationService: StationService,
     private readonly recordsService: RecordsService,
+    @InjectRepository(ChargerTrackingEntity)
+    private readonly trackingRepo: Repository<ChargerTrackingEntity>,
   ) {}
 
   async onModuleInit() {
+    // 재시작으로 추적을 잃으면 대기시간이 "확인 중"으로 떨어진다. 먼저 복원한다.
+    await this.restoreTracking();
     // 서버 시작 시 즉시 데이터 가져오기
     await this.fetchStationStatus();
   }
@@ -163,6 +169,9 @@ export class HydrogenService implements OnModuleInit {
 
       // 대기시간 추적: 후보정
       await this.updateWaitTimeTracking(waitingCars, waitingBuses);
+
+      // 추적 스냅샷 저장 — 배포·재시작이 상태를 지우지 않게
+      await this.persistTracking();
 
       this.logger.log(
         `Cached: pressure=${ttPressure}, cars=${waitingCars}, buses=${waitingBuses}, status=${operationStatus}`,
@@ -264,8 +273,92 @@ export class HydrogenService implements OnModuleInit {
     // 충전기 차종 추적을 실제 대기 수와 대조하여 유령 상태 제거
     this.reconcileChargerTypes(cars, buses);
 
+    // 빈 충전기 + 남은 대기열 = 추적 공백. 추정으로 메운다.
+    this.backfillEmptyChargers(cars, buses, now, avail);
+
     this.prevCars = cars;
     this.prevBuses = buses;
+  }
+
+  /**
+   * 추적 공백 메움: 충전기가 비었는데 대기 차량이 남아 있으면 추정 배치한다.
+   *
+   * 진입 때 충전기가 차 있으면 그 차는 추적 없이 대기열로 남는데, 이후
+   * 자리가 나도(유령 제거·미감지 완료) 재배치하는 곳이 없어 "빈 충전기 +
+   * 대기열"로 굳는 경로가 있었다. 이 상태가 대기시간 계산에서 기본값
+   * 상수(승용 5분)로 새어 나가 5분에 고정돼 보였다. 현장에선 자리가 나면
+   * 바로 물리므로, 추정 배치가 실제에 가깝다.
+   */
+  private backfillEmptyChargers(
+    cars: number,
+    buses: number,
+    now: Date,
+    avail: { a: boolean; b: boolean },
+  ): void {
+    if (avail.a && this.chargerA.type === null) {
+      const next = this.estimateNextVehicle(now, cars, buses);
+      if (next.type !== null) {
+        this.chargerA = next;
+        this.logger.log(`Backfill: charger A <- ${next.type}`);
+      }
+    }
+    if (avail.b && this.chargerB.type === null) {
+      const next = this.estimateNextVehicle(now, cars, buses);
+      if (next.type !== null) {
+        this.chargerB = next;
+        this.logger.log(`Backfill: charger B <- ${next.type}`);
+      }
+    }
+  }
+
+  /** 10분 넘은 스냅샷은 버린다 — 그 사이 차들이 다 바뀌었을 것이다. */
+  private static readonly TRACKING_MAX_AGE_MS = 10 * 60 * 1000;
+
+  private async restoreTracking(): Promise<void> {
+    try {
+      const row = await this.trackingRepo.findOne({ where: { id: 1 } });
+      if (!row) return;
+      const age = Date.now() - row.updatedAt.getTime();
+      if (age > HydrogenService.TRACKING_MAX_AGE_MS) {
+        this.logger.log(`Tracking snapshot too old (${Math.round(age / 60000)}min), starting fresh`);
+        return;
+      }
+      const revive = (c: { type: ChargingType; startTime: string | null }): ChargerState => ({
+        type: c.type,
+        startTime: c.startTime ? new Date(c.startTime) : null,
+      });
+      this.chargerA = revive(row.state.chargerA);
+      this.chargerB = revive(row.state.chargerB);
+      this.prevCars = row.state.prevCars;
+      this.prevBuses = row.state.prevBuses;
+      this.logger.log(
+        `Tracking restored: A=${this.chargerA.type}, B=${this.chargerB.type} (${Math.round(age / 1000)}s old)`,
+      );
+    } catch (error) {
+      // 복원 실패 = 재시작 직후와 같은 상태. 앱은 "확인 중"으로 넘어가고 폴링이 메운다.
+      this.logger.warn(`Tracking restore failed: ${error.message}`);
+    }
+  }
+
+  private async persistTracking(): Promise<void> {
+    try {
+      const dump = (c: ChargerState) => ({
+        type: c.type,
+        startTime: c.startTime ? c.startTime.toISOString() : null,
+      });
+      await this.trackingRepo.save({
+        id: 1,
+        state: {
+          chargerA: dump(this.chargerA),
+          chargerB: dump(this.chargerB),
+          prevCars: this.prevCars,
+          prevBuses: this.prevBuses,
+        },
+      });
+    } catch (error) {
+      // 저장 실패로 본 기능을 막지 않는다. 다음 폴링에 다시 시도된다.
+      this.logger.warn(`Tracking persist failed: ${error.message}`);
+    }
   }
 
   /**
@@ -475,30 +568,24 @@ export class HydrogenService implements OnModuleInit {
       return 0;
     }
 
-    // 가용 충전기만 고려
-    const activeA = avail.a ? this.chargerA : { type: null as ChargingType, startTime: null };
-    const activeB = avail.b ? this.chargerB : { type: null as ChargingType, startTime: null };
-
-    // 충전기별 남은 시간 계산
+    // 충전기별 남은 시간 계산 (가용 충전기만)
     const remainingA = avail.a ? this.getChargerRemainingTime(this.chargerA, now) : null;
     const remainingB = avail.b ? this.getChargerRemainingTime(this.chargerB, now) : null;
 
-    // 충전 중인 차량 파악 (가용 충전기만)
+    // 추적을 모르는 충전기가 있으면 숫자를 만들지 않는다.
+    // 기본값으로 채우면 "승용 5분" 상수가 실측처럼 찍힌다(실제로 5분 고정 표시 발생).
+    // null은 앱에서 "확인 중"이 되고, 다음 폴링의 backfill이 15초 안에 공백을 메운다.
+    if ((avail.a && remainingA === null) || (avail.b && remainingB === null)) {
+      return null;
+    }
+
+    // 충전 중인 차량 파악 (가용 충전기만 — 위 가드로 타입이 전부 확정된 상태)
     let chargingCars = 0;
     let chargingBuses = 0;
-    if (activeA.type === 'car') chargingCars++;
-    if (activeA.type === 'bus') chargingBuses++;
-    if (activeB.type === 'car') chargingCars++;
-    if (activeB.type === 'bus') chargingBuses++;
-
-    // 모르는 충전기 → 비율로 추정 (가용 충전기 중에서만)
-    const unknownChargers = (avail.a && activeA.type === null ? 1 : 0) + (avail.b && activeB.type === null ? 1 : 0);
-    if (unknownChargers > 0 && totalWaiting >= availableChargers) {
-      const carRatio = cars / totalWaiting;
-      const estimatedCars = Math.round(unknownChargers * carRatio);
-      chargingCars += estimatedCars;
-      chargingBuses += unknownChargers - estimatedCars;
-    }
+    if (avail.a && this.chargerA.type === 'car') chargingCars++;
+    if (avail.a && this.chargerA.type === 'bus') chargingBuses++;
+    if (avail.b && this.chargerB.type === 'car') chargingCars++;
+    if (avail.b && this.chargerB.type === 'bus') chargingBuses++;
 
     // 대기열: 전체에서 충전 중인 차량 제외
     const queuedCars = Math.max(0, cars - chargingCars);
@@ -512,16 +599,10 @@ export class HydrogenService implements OnModuleInit {
     // "나" 추가 (승용차로 가정)
     queue.push(CAR_CHARGE_TIME);
 
-    // 충전기 남은 시간 배열 생성 (가용 충전기만)
+    // 충전기 남은 시간 배열 (가용 충전기만 — 전부 아는 값)
     const chargers: number[] = [];
-    if (avail.a) {
-      const defaultA = activeA.type === 'bus' ? BUS_CHARGE_TIME : CAR_CHARGE_TIME;
-      chargers.push(remainingA ?? defaultA);
-    }
-    if (avail.b) {
-      const defaultB = activeB.type === 'bus' ? BUS_CHARGE_TIME : CAR_CHARGE_TIME;
-      chargers.push(remainingB ?? defaultB);
-    }
+    if (avail.a && remainingA !== null) chargers.push(remainingA);
+    if (avail.b && remainingB !== null) chargers.push(remainingB);
 
     // 시뮬레이션: "나"가 충전기에 배치될 때까지
     let time = 0;

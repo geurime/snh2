@@ -5,3 +5,4 @@ export * from './sales-record.entity';
 export * from './daily-worklog.entity';
 export * from './monthly-stats.entity';
 export * from './suggestion.entity';
+export * from './charger-tracking.entity';

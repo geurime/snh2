@@ -18,6 +18,7 @@ import {
   DailyWorklogEntity,
   MonthlyStatsEntity,
   SuggestionEntity,
+  ChargerTrackingEntity,
 } from './entities';
 
 @Module({
@@ -46,6 +47,7 @@ import {
           DailyWorklogEntity,
           MonthlyStatsEntity,
           SuggestionEntity,
+          ChargerTrackingEntity,
                 ],
         synchronize: configService.get<string>('NODE_ENV') !== 'production', // 프로덕션에서는 마이그레이션 사용
         ssl: configService.get<string>('NODE_ENV') === 'production'

@@ -8,6 +8,7 @@ import {
   DailyWorklogEntity,
   MonthlyStatsEntity,
   SuggestionEntity,
+  ChargerTrackingEntity,
 } from './entities';
 
 // .env 파일 로드
@@ -24,6 +25,7 @@ export const dataSourceOptions: DataSourceOptions = {
     DailyWorklogEntity,
     MonthlyStatsEntity,
     SuggestionEntity,
+    ChargerTrackingEntity,
   ],
   migrations: ['dist/migrations/*.js'],
   ssl: process.env.NODE_ENV === 'production'
