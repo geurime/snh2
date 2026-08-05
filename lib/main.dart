@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'constants/colors.dart';
+import 'constants/typography.dart';
 import 'providers/station_provider.dart';
 import 'providers/admin_provider.dart';
+import 'constants/spacing.dart';
 import 'screens/home/home_screen.dart';
-import 'screens/info_screen.dart';
 import 'screens/admin/admin_screen.dart';
-import 'screens/splash_screen.dart';
+import 'widgets/pressable.dart';
 
 final FlutterLocalNotificationsPlugin _localNotifications =
     FlutterLocalNotificationsPlugin();
@@ -82,12 +82,16 @@ class MyApp extends StatelessWidget {
       title: '성남수소충전소',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        scaffoldBackgroundColor: AppColors.background,
-        colorScheme: ColorScheme.light(
-          primary: AppColors.primary,
+        // UI 전체 기본 서체. 화면마다 지정하지 않는다.
+        fontFamily: AppText.fontFamily,
+        scaffoldBackgroundColor: AppColors.gray100,
+        colorScheme: const ColorScheme.light(
+          primary: AppColors.orange,
         ),
       ),
-      home: const SplashScreen(),
+      // 스플래시를 두지 않는다 — 하루에도 몇 번씩 열어 5초 보고 나가는 앱이라
+      // 1초 대기가 매번 겪는 지연이 된다. 브랜드는 앱 아이콘이 이미 각인한다.
+      home: const MainScreen(),
     );
   }
 }
@@ -106,79 +110,139 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     final isAdminMode = context.watch<AdminProvider>().isAdminMode;
 
-    final screens = [
-      const HomeScreen(),
-      const InfoScreen(),
-      if (isAdminMode) const AdminScreen(),
-    ];
-
-    // 관리자 모드 해제 시 인덱스 조정
-    if (!isAdminMode && _currentIndex >= screens.length) {
+    // 손님 화면은 한 장이라 전환할 것이 없다.
+    if (!isAdminMode) {
       _currentIndex = 0;
+      return const Scaffold(body: HomeScreen());
     }
 
+    // 탭바가 아니라 모드 전환 스위치다 — 관리자에게만, 임시로 얹힌다.
+    // 그래서 화면 폭을 차지하는 고정 바 대신 떠 있는 세그먼트를 쓴다.
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(0, LucideIcons.activity, '현황'),
-                _buildNavItem(1, LucideIcons.info, '안내'),
-                if (isAdminMode) _buildNavItem(2, LucideIcons.settings, '관리'),
-              ],
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _currentIndex,
+            children: const [
+              HomeScreen(bottomInset: _ModeSwitch.reservedHeight),
+              AdminScreen(bottomInset: _ModeSwitch.reservedHeight),
+            ],
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: AppSpace.xxl),
+                child: Center(
+                  child: _ModeSwitch(
+                    currentIndex: _currentIndex,
+                    onSelect: (index) => setState(() => _currentIndex = index),
+                  ),
+                ),
+              ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 인디케이터가 옆으로 미끄러지며 붙는다. 칸마다 배경을 켜고 끄면 두 개가
+/// 깜빡이는 것으로 보이지만, 하나가 이동하면 "여기서 저기로 옮겼다"가 된다.
+class _ModeSwitch extends StatelessWidget {
+  /// 스위치가 마지막 콘텐츠를 가리지 않도록 각 화면이 비워둘 아래 여백.
+  static const reservedHeight = 92.0;
+
+  static const _segmentWidth = 92.0;
+  static const _segmentHeight = 44.0;
+  static const _pad = AppSpace.xs;
+
+  final int currentIndex;
+  final ValueChanged<int> onSelect;
+
+  const _ModeSwitch({required this.currentIndex, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(_pad),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: AppShadow.floating,
+      ),
+      child: SizedBox(
+        width: _segmentWidth * 2,
+        height: _segmentHeight,
+        child: Stack(
+          children: [
+            AnimatedAlign(
+              duration: AppMotion.of(context, AppMotion.snap),
+              curve: AppMotion.snapCurve,
+              alignment:
+                  currentIndex == 0 ? Alignment.centerLeft : Alignment.centerRight,
+              child: Container(
+                width: _segmentWidth,
+                height: _segmentHeight,
+                decoration: BoxDecoration(
+                  color: AppColors.orangeTint,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            Row(
+              children: [
+                _Segment(
+                  label: '현황',
+                  isSelected: currentIndex == 0,
+                  onTap: () => onSelect(0),
+                ),
+                _Segment(
+                  label: '관리',
+                  isSelected: currentIndex == 1,
+                  onTap: () => onSelect(1),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildNavItem(int index, IconData icon, String label) {
-    final isSelected = _currentIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _currentIndex = index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.15) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 22,
-              color: isSelected ? AppColors.primary : AppColors.black.withOpacity(0.4),
+class _Segment extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _Segment({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      scale: 0.94,
+      onTap: onTap,
+      child: SizedBox(
+        width: _ModeSwitch._segmentWidth,
+        height: _ModeSwitch._segmentHeight,
+        child: Center(
+          child: AnimatedDefaultTextStyle(
+            duration: AppMotion.of(context, AppMotion.fast),
+            curve: AppMotion.curve,
+            style: AppText.body.copyWith(
+              fontWeight: FontWeight.w700,
+              color: isSelected ? AppColors.orangeText : AppColors.gray600,
             ),
-            if (isSelected) ...[
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
-                ),
-              ),
-            ],
-          ],
+            child: Text(label),
+          ),
         ),
       ),
     );
