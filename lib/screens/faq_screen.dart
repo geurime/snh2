@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../constants/colors.dart';
+import '../constants/spacing.dart';
+import '../constants/typography.dart';
+
+class FaqImage {
+  final String path;
+  final String label;
+
+  const FaqImage({required this.path, required this.label});
+}
 
 class FaqItem {
   final String question;
@@ -10,28 +19,22 @@ class FaqItem {
   const FaqItem({required this.question, required this.answer, this.images});
 }
 
-class FaqImage {
-  final String path;
-  final String label;
-
-  const FaqImage({required this.path, required this.label});
-}
-
-class FaqScreen extends StatefulWidget {
+/// 여섯 항목을 다 펼쳐서 보여준다.
+///
+/// 접는 게 나은 건 질문 목록을 훑어야 할 때인데, 답이 전부 1~3줄이라
+/// 펼쳐도 훑기에 방해가 안 된다. 접으면 답이 있는지 보려고 여섯 번 눌러야 한다.
+/// 카드 경계가 질문 단위를 갈라주므로 아코디언 없이도 스캔이 된다.
+///
+/// 검색창도 없앴다 — 여섯 개는 스크롤 한 번이면 다 보인다.
+/// 검색은 "다 볼 수 없을 때" 쓰는 도구고, 여기선 입력이라는 일만 하나 늘린다.
+class FaqScreen extends StatelessWidget {
   const FaqScreen({super.key});
 
-  @override
-  State<FaqScreen> createState() => _FaqScreenState();
-}
-
-class _FaqScreenState extends State<FaqScreen> {
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-
-  final List<FaqItem> _allFaqs = const [
+  static const _items = [
     FaqItem(
       question: '들어가도 되는지 모르겠어요',
-      answer: '입구의 콘 배치를 확인해주세요.\n콘이 없다면 양쪽 어디든 바로 들어오시면 됩니다!',
+      answer: '입구의 콘 배치를 확인해주세요.\n'
+          '콘이 없으면 양쪽 어디든 바로 들어오시면 됩니다.',
       images: [
         FaqImage(path: 'assets/cone_open.jpeg', label: '입장 가능'),
         FaqImage(path: 'assets/cone_blocked.jpeg', label: '입장 불가'),
@@ -39,271 +42,145 @@ class _FaqScreenState extends State<FaqScreen> {
     ),
     FaqItem(
       question: '충전은 얼마나 걸리나요?',
-      answer: '승용차는 약 5분, 버스는 약 30분 소요됩니다.',
+      answer: '승용차는 약 5분, 버스는 약 30분 걸려요.',
     ),
     FaqItem(
       question: '몇 %까지 충전되나요?',
-      answer: '안전을 위해 최대 95%까지 충전됩니다.\n수소 공급 상황에 따라 변동될 수 있습니다.',
+      answer: '안전을 위해 최대 95%까지 충전됩니다.\n'
+          '수소 공급 상황에 따라 달라질 수 있어요.',
     ),
     FaqItem(
       question: '예약할 수 있나요?',
-      answer: '예약은 불가하며, 현장 선착순으로 이용하실 수 있습니다.',
+      answer: '예약은 안 되고 현장 선착순이에요.',
     ),
     FaqItem(
       question: '몇 시까지 방문해야 하나요?',
-      answer: '영업 마감 10분 전인 19:50 이전 도착을 권장합니다.',
+      answer: '마감 10분 전인 19:50까지 오시는 걸 권해드려요.',
     ),
     FaqItem(
       question: '결제는 어떻게 하나요?',
-      answer: '카드, 현금(계좌이체), 성남사랑상품권, E1 포인트로 결제 가능합니다.\n\n모바일 결제는 삼성페이(MST)만 가능하며, 애플페이(NFC)는 지원되지 않습니다.',
+      answer: '카드, 현금(계좌이체), 성남사랑상품권, E1 포인트로 결제할 수 있어요.\n\n'
+          '모바일 결제는 삼성페이(MST)만 되고 애플페이(NFC)는 안 됩니다.',
     ),
   ];
-
-  List<FaqItem> get _filteredFaqs {
-    if (_searchQuery.isEmpty) return _allFaqs;
-    return _allFaqs.where((faq) {
-      return faq.question.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          faq.answer.toLowerCase().contains(_searchQuery.toLowerCase());
-    }).toList();
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.gray100,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.gray100,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: AppColors.black),
+          icon: const Icon(LucideIcons.arrowLeft, color: AppColors.gray900),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           '자주 묻는 질문',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppColors.black,
-          ),
+          style: AppText.screenTitle.copyWith(color: AppColors.gray900),
         ),
-        centerTitle: true,
       ),
-      body: Column(
+      body: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpace.xl,
+          AppSpace.xs,
+          AppSpace.xl,
+          AppSpace.xxl,
+        ),
+        itemCount: _items.length,
+        separatorBuilder: (context, index) => const SizedBox(height: AppSpace.md),
+        itemBuilder: (_, i) => _Card(item: _items[i]),
+      ),
+    );
+  }
+}
+
+class _Card extends StatelessWidget {
+  final FaqItem item;
+
+  const _Card({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpace.card),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 검색창
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
-              cursorColor: AppColors.primary,
-              decoration: InputDecoration(
-                hintText: '질문 검색',
-                hintStyle: TextStyle(
-                  color: AppColors.black.withOpacity(0.4),
-                  fontSize: 15,
-                ),
-                prefixIcon: Icon(
-                  LucideIcons.search,
-                  color: AppColors.primary,
-                  size: 20,
-                ),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(
-                          LucideIcons.x,
-                          color: AppColors.black.withOpacity(0.4),
-                          size: 18,
-                        ),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            _searchQuery = '';
-                          });
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: AppColors.card,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppColors.primary.withOpacity(0.5),
-                    width: 1,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppColors.primary,
-                    width: 1,
-                  ),
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              ),
+          Text(
+            item.question,
+            style: AppText.body.copyWith(
+              fontWeight: FontWeight.w700,
+              color: AppColors.gray900,
             ),
           ),
-          // FAQ 목록
-          Expanded(
-            child: _filteredFaqs.isEmpty
-                ? Center(
-                    child: Text(
-                      '검색 결과가 없습니다',
-                      style: TextStyle(
-                        color: AppColors.black.withOpacity(0.5),
-                        fontSize: 14,
-                      ),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.only(top: 8, bottom: 20),
-                    itemCount: _filteredFaqs.length,
-                    itemBuilder: (context, index) {
-                      final faq = _filteredFaqs[index];
-                      return _buildFaqItem(faq);
-                    },
-                  ),
+          const SizedBox(height: AppSpace.sm),
+          Text(
+            item.answer,
+            style: AppText.body.copyWith(
+              color: AppColors.gray600,
+              height: 1.5,
+            ),
           ),
+          if (item.images != null) ...[
+            const SizedBox(height: AppSpace.lg),
+            Row(
+              children: [
+                for (final (i, img) in item.images!.indexed) ...[
+                  if (i > 0) const SizedBox(width: AppSpace.md),
+                  Expanded(child: _Photo(image: img)),
+                ],
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
+}
 
-  Widget _buildAnswerText(String answer) {
-    final defaultStyle = TextStyle(
-      fontSize: 14,
-      color: AppColors.black.withOpacity(0.7),
-      height: 1.5,
-    );
-    final brandStyle = TextStyle(
-      fontSize: 14,
-      color: AppColors.primary,
-      fontWeight: FontWeight.w600,
-      height: 1.5,
-    );
+class _Photo extends StatelessWidget {
+  final FaqImage image;
 
-    // 강조할 단어들 색상 적용
-    final brandWords = ['삼성페이(MST)', '애플페이(NFC)', '95%', '19:50'];
-    final List<TextSpan> spans = [];
-    String remaining = answer;
+  const _Photo({required this.image});
 
-    while (remaining.isNotEmpty) {
-      int nearestIndex = remaining.length;
-      String? nearestWord;
+  /// 진입 안내 다이얼로그와 같은 규칙 — 막힌 경우에만 색이 붙는다.
+  bool get _isBlocked => image.label.contains('불가');
 
-      for (final word in brandWords) {
-        final index = remaining.indexOf(word);
-        if (index != -1 && index < nearestIndex) {
-          nearestIndex = index;
-          nearestWord = word;
-        }
-      }
-
-      if (nearestWord != null) {
-        if (nearestIndex > 0) {
-          spans.add(TextSpan(text: remaining.substring(0, nearestIndex), style: defaultStyle));
-        }
-        spans.add(TextSpan(text: nearestWord, style: brandStyle));
-        remaining = remaining.substring(nearestIndex + nearestWord.length);
-      } else {
-        spans.add(TextSpan(text: remaining, style: defaultStyle));
-        remaining = '';
-      }
-    }
-
-    return RichText(text: TextSpan(children: spans));
-  }
-
-  Widget _buildFaqItem(FaqItem faq) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Theme(
-        data: ThemeData().copyWith(
-          dividerColor: Colors.transparent,
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(AppRadius.chip),
+          child: Image.asset(image.path, fit: BoxFit.cover),
         ),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          title: Text(
-            faq.question,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppColors.black,
+        const SizedBox(height: AppSpace.sm),
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpace.md,
+            vertical: AppSpace.xs + 2,
+          ),
+          decoration: BoxDecoration(
+            color: _isBlocked ? AppColors.orangeTint : AppColors.gray100,
+            borderRadius: BorderRadius.circular(AppSpace.sm),
+          ),
+          child: Text(
+            image.label,
+            style: AppText.label.copyWith(
+              fontWeight: FontWeight.w700,
+              color: _isBlocked ? AppColors.orangeText : AppColors.gray900,
             ),
           ),
-          iconColor: AppColors.primary,
-          collapsedIconColor: AppColors.black.withOpacity(0.4),
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: _buildAnswerText(faq.answer),
-            ),
-            if (faq.images != null) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: faq.images!.map((img) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Column(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.asset(
-                            img.path,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: img.label == '입장 가능'
-                                ? Colors.green.withOpacity(0.15)
-                                : Colors.red.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            img.label,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: img.label == '입장 가능'
-                                  ? Colors.green[700]
-                                  : Colors.red[700],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )).toList(),
-              ),
-            ],
-          ],
         ),
-      ),
+      ],
     );
   }
 }
