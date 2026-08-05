@@ -10,7 +10,6 @@ import { TTModule } from './tt/tt.module';
 import { RecordsModule } from './records/records.module';
 import { SuggestionModule } from './suggestion/suggestion.module';
 import { AuthModule } from './auth/auth.module';
-import { NotificationModule } from './notification/notification.module';
 import {
   StationStatusEntity,
   TTStatusEntity,
@@ -19,7 +18,6 @@ import {
   DailyWorklogEntity,
   MonthlyStatsEntity,
   SuggestionEntity,
-  FcmTokenEntity,
 } from './entities';
 
 @Module({
@@ -48,8 +46,7 @@ import {
           DailyWorklogEntity,
           MonthlyStatsEntity,
           SuggestionEntity,
-          FcmTokenEntity,
-        ],
+                ],
         synchronize: configService.get<string>('NODE_ENV') !== 'production', // 프로덕션에서는 마이그레이션 사용
         ssl: configService.get<string>('NODE_ENV') === 'production'
           ? { rejectUnauthorized: false }
@@ -58,7 +55,6 @@ import {
     }),
     ScheduleModule.forRoot(),
     AuthModule,
-    NotificationModule,
     HydrogenModule,
     StationModule,
     TTModule,
