@@ -3,8 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../constants/colors.dart';
+import '../constants/spacing.dart';
+import '../constants/typography.dart';
 import '../services/hydrogen_api.dart';
+import '../widgets/pressable.dart';
 
+/// 월 통계와 최근 7일 흐름.
+///
+/// 지금은 쓰는 사람이 확인되지 않은 화면이라 **구조는 건드리지 않는다.**
+/// 폐기한 색·스케일 밖 글씨를 토큰으로 맞추고, 정보를 안 주는 아이콘만 뺐다.
+/// 개편은 진입 이벤트를 붙여 사용량을 본 뒤에 한다.
+///
+/// 차트와 리스트는 역할이 다르다 — 차트는 **형태**, 리스트는 **일곱 날을 나란히**.
+/// 툴팁은 한 점씩 답하므로 리스트를 대신하지 못한다.
 class SalesReportScreen extends StatefulWidget {
   const SalesReportScreen({super.key});
 
@@ -13,6 +24,8 @@ class SalesReportScreen extends StatefulWidget {
 }
 
 class _SalesReportScreenState extends State<SalesReportScreen> {
+  static const _dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+
   final HydrogenApiService _api = HydrogenApiService();
 
   late int _selectedYear;
@@ -34,17 +47,22 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
 
-    // 월별 통계 로드
     final stats = await _api.getMonthlySalesStats(_selectedYear, _selectedMonth);
 
-    // 최근 7일 데이터 로드 (오늘 데이터 있으면 오늘까지, 없으면 어제까지)
+    // 오늘 마감이 끝났으면 오늘까지, 아니면 어제까지.
+    // 판정은 값이 아니라 레코드 존재 여부로 한다 — 서버가 미입력 날짜에도
+    // totalKg 0을 채워 보내서, 값으로 보면 "진짜 0kg으로 마감한 날"이 빠진다.
     final today = DateTime.now();
     final todaySales = await _api.getSales(_formatDate(today));
-    final hasTodayData = (todaySales?['totalKg'] ?? 0).toDouble() > 0;
-    final endDate = hasTodayData ? today : today.subtract(const Duration(days: 1));
-    final startDate = endDate.subtract(const Duration(days: 6));
-    final weekly = await _api.getSalesRange(_formatDate(startDate), _formatDate(endDate));
+    final closedToday = todaySales?['id'] != null;
+    final endDate =
+        closedToday ? today : today.subtract(const Duration(days: 1));
+    final weekly = await _api.getSalesRange(
+      _formatDate(endDate.subtract(const Duration(days: 6))),
+      _formatDate(endDate),
+    );
 
+    if (!mounted) return;
     setState(() {
       _monthlyStats = stats;
       _weeklyData = weekly;
@@ -52,519 +70,499 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     });
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-
-  void _showMonthPicker() {
-    int tempYear = _selectedYear;
-    int tempMonth = _selectedMonth;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.card,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 드래그 핸들 바
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppColors.black.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  '월 선택',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.black,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // 휠 피커
-                SizedBox(
-                  height: 180,
-                  child: Row(
-                    children: [
-                      // 년도 피커
-                      Expanded(
-                        child: CupertinoPicker(
-                          scrollController: FixedExtentScrollController(
-                            initialItem: _selectedYear - 2020,
-                          ),
-                          itemExtent: 36,
-                          onSelectedItemChanged: (index) {
-                            tempYear = 2020 + index;
-                          },
-                          children: List.generate(
-                            DateTime.now().year - 2020 + 1,
-                            (index) => Center(
-                              child: Text(
-                                '${(2020 + index) % 100}년',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: AppColors.black,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      // 월 피커
-                      Expanded(
-                        child: CupertinoPicker(
-                          scrollController: FixedExtentScrollController(
-                            initialItem: _selectedMonth - 1,
-                          ),
-                          itemExtent: 36,
-                          onSelectedItemChanged: (index) {
-                            tempMonth = index + 1;
-                          },
-                          children: List.generate(
-                            12,
-                            (index) => Center(
-                              child: Text(
-                                '${index + 1}월',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  color: AppColors.black,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // 확인 버튼
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      setState(() {
-                        _selectedYear = tempYear;
-                        _selectedMonth = tempMonth;
-                      });
-                      _loadData();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      '확인',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
+  String _formatDate(DateTime date) =>
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.gray100,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.gray100,
         elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 0,
         leading: IconButton(
-          icon: Icon(LucideIcons.arrowLeft, color: AppColors.black),
+          icon: const Icon(LucideIcons.arrowLeft, color: AppColors.gray900),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           '매출 추이',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: AppColors.black,
-          ),
+          style: AppText.screenTitle.copyWith(color: AppColors.gray900),
         ),
-        centerTitle: true,
+        actions: [
+          // 화면 전체를 지배하는 컨트롤이라 카드 안이 아니라 헤더에 둔다.
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpace.lg),
+            child: _MonthButton(
+              year: _selectedYear,
+              month: _selectedMonth,
+              onTap: _showMonthPicker,
+            ),
+          ),
+        ],
       ),
       body: _isLoading
-          ? Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primary,
+          ? const Center(child: CircularProgressIndicator(color: AppColors.orange))
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpace.xl,
+                AppSpace.xs,
+                AppSpace.xl,
+                AppSpace.xxl,
               ),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildMonthlySummaryCard(),
-                  const SizedBox(height: 20),
-                  _buildChartCard(),
-                  const SizedBox(height: 20),
-                  _buildWeeklyListCard(),
-                ],
-              ),
+              children: [
+                _buildSummary(),
+                const SizedBox(height: AppSpace.xl),
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: AppSpace.xs,
+                    bottom: AppSpace.sm,
+                  ),
+                  child: Text(
+                    '최근 7일',
+                    style: AppText.tag.copyWith(color: AppColors.gray600),
+                  ),
+                ),
+                _buildTrend(),
+              ],
             ),
     );
   }
 
-  Widget _buildMonthlySummaryCard() {
+  /// 총계는 두지 않는다 — 컴퓨터에서 확인되는 값이다.
+  /// 앱에서만 알 수 있는 건 평균이라 그것만 남긴다.
+  Widget _buildSummary() {
     final stats = _monthlyStats;
-    final totalKg = stats?.totalKg ?? 0;
-    final totalVehicles = stats?.totalVehicles ?? 0;
-    final dailyAvgKg = stats?.dailyAvgKg ?? 0;
-    final dailyAvgVehicles = stats?.dailyAvgVehicles ?? 0;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpace.card),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _Stat(
+                label: '일평균 판매량',
+                value: (stats?.dailyAvgKg ?? 0).toStringAsFixed(0),
+                unit: 'kg',
+              ),
+            ),
+            const VerticalDivider(
+              width: AppSpace.xxl,
+              thickness: 1,
+              color: AppColors.gray300,
+            ),
+            Expanded(
+              child: _Stat(
+                label: '일평균 대수',
+                value: (stats?.dailyAvgVehicles ?? 0).toStringAsFixed(0),
+                unit: '대',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrend() {
+    final data = _weeklyData ?? [];
+
+    if (data.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppSpace.card),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(AppRadius.card),
+        ),
+        child: Center(
+          child: Text(
+            '기록이 없어요',
+            style: AppText.body.copyWith(color: AppColors.gray600),
+          ),
+        ),
+      );
+    }
+
+    // Y축은 최대값을 100단위로 올려 반씩 나눈다 — 574면 0/300/600,
+    // 900이면 0/500/1000으로 데이터에 따라 알아서 읽기 좋은 수가 된다.
+    var maxKg = 100.0;
+    for (final d in data) {
+      if (d.totalKg > maxKg) maxKg = d.totalKg;
+    }
+    maxKg = ((maxKg / 100).ceil() * 100).toDouble();
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpace.card),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              GestureDetector(
-                onTap: _showMonthPicker,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${_selectedYear % 100}년 $_selectedMonth월',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        LucideIcons.chevronDown,
-                        size: 14,
-                        color: AppColors.primary,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatItem(
-                  icon: LucideIcons.fuel,
-                  label: '일평균 판매량',
-                  value: '${dailyAvgKg.toStringAsFixed(0)}kg',
-                ),
-              ),
-              Container(
-                width: 1,
-                height: 50,
-                color: AppColors.black.withOpacity(0.1),
-              ),
-              Expanded(
-                child: _buildStatItem(
-                  icon: LucideIcons.car,
-                  label: '일평균 충전대수',
-                  value: '${dailyAvgVehicles.toStringAsFixed(0)}대',
-                ),
-              ),
-            ],
-          ),
+          SizedBox(height: 170, child: _chart(data, maxKg)),
+          const SizedBox(height: 18),
+          for (final (i, d) in data.reversed.indexed)
+            _DayRow(sales: d, showDivider: i < data.length - 1),
         ],
       ),
     );
   }
 
-  Widget _buildStatItem({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
+  Widget _chart(List<DailySales> data, double maxKg) {
+    final labelStyle = AppText.label.copyWith(color: AppColors.gray600);
+
+    return LineChart(
+      LineChartData(
+        gridData: FlGridData(
+          show: true,
+          drawVerticalLine: false,
+          horizontalInterval: maxKg / 2,
+          getDrawingHorizontalLine: (_) =>
+              const FlLine(color: AppColors.gray300, strokeWidth: 1),
+        ),
+        titlesData: FlTitlesData(
+          rightTitles: const AxisTitles(),
+          topTitles: const AxisTitles(),
+          leftTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              interval: maxKg / 2,
+              reservedSize: 44,
+              getTitlesWidget: (value, _) => Text(
+                '${value.toInt()}',
+                style: labelStyle,
+              ),
+            ),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 32,
+              getTitlesWidget: (value, _) {
+                final i = value.toInt();
+                if (i < 0 || i >= data.length) return const SizedBox.shrink();
+                final date = DateTime.parse(data[i].date);
+                return Padding(
+                  padding: const EdgeInsets.only(top: AppSpace.sm),
+                  child: Text(_dayNames[date.weekday % 7], style: labelStyle),
+                );
+              },
+            ),
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        minX: 0,
+        maxX: (data.length - 1).toDouble(),
+        minY: 0,
+        maxY: maxKg,
+        lineBarsData: [
+          LineChartBarData(
+            spots: [
+              for (var i = 0; i < data.length; i++)
+                FlSpot(i.toDouble(), data[i].totalKg),
+            ],
+            isCurved: false,
+            color: AppColors.orangeText,
+            barWidth: 3,
+            isStrokeCapRound: true,
+            dotData: FlDotData(
+              show: true,
+              getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
+                radius: 3,
+                color: AppColors.orangeText,
+                strokeWidth: 0,
+              ),
+            ),
+            belowBarData: BarAreaData(
+              show: true,
+              color: AppColors.orangeTint,
+            ),
+          ),
+        ],
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipColor: (_) => AppColors.gray900,
+            getTooltipItems: (spots) => spots.map((spot) {
+              final d = data[spot.x.toInt()];
+              final date = DateTime.parse(d.date);
+              return LineTooltipItem(
+                '${date.month}/${date.day}\n'
+                '${d.totalKg.toInt()}kg · ${d.totalVehicles}대',
+                AppText.label.copyWith(
+                  color: AppColors.card,
+                  fontWeight: FontWeight.w600,
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showMonthPicker() {
+    var tempYear = _selectedYear;
+    var tempMonth = _selectedMonth;
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.xl,
+            AppSpace.sm,
+            AppSpace.xl,
+            AppSpace.xl,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '월 선택',
+                      style: AppText.screenTitle.copyWith(
+                        color: AppColors.gray900,
+                        height: 1.1,
+                      ),
+                    ),
+                  ),
+                  Pressable(
+                    scale: 0.88,
+                    onTap: () => Navigator.pop(sheetContext),
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      alignment: Alignment.centerRight,
+                      child: const Icon(
+                        LucideIcons.x,
+                        size: AppIcon.lg,
+                        color: AppColors.gray600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpace.md),
+              SizedBox(
+                height: 180,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _Wheel(
+                        initial: _selectedYear - 2020,
+                        count: DateTime.now().year - 2020 + 1,
+                        label: (i) => '${(2020 + i) % 100}년',
+                        onChanged: (i) => tempYear = 2020 + i,
+                      ),
+                    ),
+                    Expanded(
+                      child: _Wheel(
+                        initial: _selectedMonth - 1,
+                        count: 12,
+                        label: (i) => '${i + 1}월',
+                        onChanged: (i) => tempMonth = i + 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AppSpace.xl),
+              Pressable(
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  setState(() {
+                    _selectedYear = tempYear;
+                    _selectedMonth = tempMonth;
+                  });
+                  _loadData();
+                },
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 52),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AppColors.orange,
+                    borderRadius: BorderRadius.circular(AppRadius.chip),
+                  ),
+                  child: Text(
+                    '확인',
+                    style: AppText.body.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.card,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MonthButton extends StatelessWidget {
+  final int year;
+  final int month;
+  final VoidCallback onTap;
+
+  const _MonthButton({
+    required this.year,
+    required this.month,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Pressable(
+      scale: 0.94,
+      onTap: onTap,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 48),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${year % 100}년 $month월',
+              style: AppText.body.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.gray900,
+              ),
+            ),
+            const SizedBox(width: AppSpace.xs),
+            const Icon(
+              LucideIcons.chevronDown,
+              size: AppIcon.sm,
+              color: AppColors.gray600,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  final String label;
+  final String value;
+  final String unit;
+
+  const _Stat({required this.label, required this.value, required this.unit});
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          size: 22,
-          color: AppColors.primary,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: AppColors.black.withOpacity(0.5),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppColors.black,
-          ),
+        Text(label, style: AppText.label.copyWith(color: AppColors.gray600)),
+        const SizedBox(height: AppSpace.xs),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text(value, style: AppText.number.copyWith(color: AppColors.gray900)),
+            const SizedBox(width: 2),
+            Text(
+              unit,
+              style: AppText.label.copyWith(
+                color: AppColors.gray900,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
+}
 
-  Widget _buildChartCard() {
-    final data = _weeklyData ?? [];
+class _DayRow extends StatelessWidget {
+  final DailySales sales;
+  final bool showDivider;
 
-    // Y축 최대값 계산
-    double maxKg = 100;
-    for (final d in data) {
-      if (d.totalKg > maxKg) {
-        maxKg = d.totalKg;
-      }
-    }
-    maxKg = ((maxKg / 100).ceil() * 100).toDouble();
-    if (maxKg < 100) maxKg = 100;
+  const _DayRow({required this.sales, required this.showDivider});
+
+  @override
+  Widget build(BuildContext context) {
+    final date = DateTime.parse(sales.date);
+    final day = _SalesReportScreenState._dayNames[date.weekday % 7];
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(vertical: 11),
       decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
+        border: showDivider
+            ? const Border(bottom: BorderSide(color: AppColors.gray100))
+            : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Icon(
-                LucideIcons.barChart3,
-                size: 20,
-                color: AppColors.primary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                '최근 7일 추이',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.black,
-                ),
-              ),
-            ],
+          Text(
+            '${date.month}/${date.day} $day',
+            style: AppText.body.copyWith(
+              color: AppColors.gray600,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 200,
-            child: data.isEmpty
-                ? Center(
-                    child: Text(
-                      '데이터가 없습니다',
-                      style: TextStyle(
-                        color: AppColors.black.withOpacity(0.5),
-                      ),
-                    ),
-                  )
-                : LineChart(
-                    LineChartData(
-                      gridData: FlGridData(
-                        show: true,
-                        drawVerticalLine: false,
-                        horizontalInterval: maxKg / 5,
-                        getDrawingHorizontalLine: (value) {
-                          return FlLine(
-                            color: AppColors.black.withOpacity(0.1),
-                            strokeWidth: 1,
-                          );
-                        },
-                      ),
-                      titlesData: FlTitlesData(
-                        show: true,
-                        rightTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        topTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            interval: maxKg / 5,
-                            reservedSize: 40,
-                            getTitlesWidget: (value, meta) {
-                              return Text(
-                                '${value.toInt()}',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.black.withOpacity(0.4),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        bottomTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 30,
-                            getTitlesWidget: (value, meta) {
-                              final index = value.toInt();
-                              if (index >= 0 && index < data.length) {
-                                final date = DateTime.parse(data[index].date);
-                                final dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Text(
-                                    dayNames[date.weekday % 7],
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.black.withOpacity(0.5),
-                                    ),
-                                  ),
-                                );
-                              }
-                              return const Text('');
-                            },
-                          ),
-                        ),
-                      ),
-                      borderData: FlBorderData(show: false),
-                      minX: 0,
-                      maxX: (data.length - 1).toDouble(),
-                      minY: 0,
-                      maxY: maxKg,
-                      lineBarsData: [
-                        LineChartBarData(
-                          spots: data.asMap().entries.map((entry) {
-                            return FlSpot(
-                              entry.key.toDouble(),
-                              entry.value.totalKg,
-                            );
-                          }).toList(),
-                          isCurved: true,
-                          color: AppColors.primary,
-                          barWidth: 3,
-                          isStrokeCapRound: true,
-                          dotData: const FlDotData(show: false),
-                          belowBarData: BarAreaData(
-                            show: true,
-                            color: AppColors.primary.withOpacity(0.15),
-                          ),
-                        ),
-                      ],
-                      lineTouchData: LineTouchData(
-                        touchTooltipData: LineTouchTooltipData(
-                          getTooltipColor: (touchedSpot) => AppColors.black,
-                          getTooltipItems: (touchedSpots) {
-                            return touchedSpots.map((spot) {
-                              final d = data[spot.x.toInt()];
-                              final date = DateTime.parse(d.date);
-                              return LineTooltipItem(
-                                '${date.month}/${date.day}\n${d.totalKg.toInt()}kg · ${d.totalVehicles}대',
-                                const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              );
-                            }).toList();
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
+          const Spacer(),
+          Text(
+            '${sales.totalKg.toInt()}kg · ${sales.totalVehicles}대',
+            style: AppText.body.copyWith(
+              color: AppColors.gray900,
+              fontWeight: FontWeight.w600,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildWeeklyListCard() {
-    final data = _weeklyData ?? [];
-    if (data.isEmpty) return const SizedBox.shrink();
+class _Wheel extends StatelessWidget {
+  final int initial;
+  final int count;
+  final String Function(int) label;
+  final ValueChanged<int> onChanged;
 
-    final dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-    final reversed = data.reversed.toList();
+  const _Wheel({
+    required this.initial,
+    required this.count,
+    required this.label,
+    required this.onChanged,
+  });
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '일별 상세',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.black,
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoPicker(
+      scrollController: FixedExtentScrollController(initialItem: initial),
+      itemExtent: 38,
+      onSelectedItemChanged: onChanged,
+      children: [
+        for (var i = 0; i < count; i++)
+          Center(
+            child: Text(
+              label(i),
+              style: AppText.body.copyWith(color: AppColors.gray900),
             ),
           ),
-          const SizedBox(height: 16),
-          ...reversed.map((d) {
-            final date = DateTime.parse(d.date);
-            final dayName = dayNames[date.weekday % 7];
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Text(
-                    '${date.month}/${date.day}($dayName)',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.black.withOpacity(0.6),
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${d.totalKg.toInt()}kg · ${d.totalVehicles}대',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.black,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        ],
-      ),
+      ],
     );
   }
 }
