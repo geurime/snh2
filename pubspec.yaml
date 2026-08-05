@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.1.0+8
+version: 1.1.0+9
 
 environment:
   sdk: ^3.10.7
@@ -76,9 +76,8 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/map_icons/
-    - assets/app_icon.png
-    - assets/eonjewa_logo.png
+    # app_icon.png는 여기 없다 — flutter_launcher_icons가 빌드 때만 읽는다.
+    # 목록에 넣으면 런타임에 쓰지도 않는 840KB가 앱에 실린다.
     - assets/cone_blocked.jpeg
     - assets/cone_open.jpeg
 
@@ -94,13 +93,6 @@ flutter:
           weight: 700
         - asset: assets/fonts/Pretendard-ExtraBold.otf
           weight: 800
-    # 앱 아이콘·스플래시 등 브랜딩 자리에만 남긴다. UI 안에서는 쓰지 않는다.
-    - family: Badasseugi
-      fonts:
-        - asset: assets/fonts/Hakgyoansim Badasseugi OTF B.otf
-    - family: Konkon
-      fonts:
-        - asset: assets/fonts/온글잎 콘콘체.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
