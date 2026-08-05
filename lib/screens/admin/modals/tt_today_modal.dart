@@ -26,7 +26,7 @@ class TTTodayModal extends StatefulWidget {
       context: context,
       backgroundColor: AppColors.card,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
       ),
       builder: (context) => TTTodayModal(
         initialCount: initialCount,
@@ -69,7 +69,7 @@ class _TTTodayModalState extends State<TTTodayModal> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+        padding: const EdgeInsets.fromLTRB(AppSpace.xl, AppSpace.sm, AppSpace.xl, AppSpace.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -130,24 +130,22 @@ class _TTTodayModalState extends State<TTTodayModal> {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            GestureDetector(
+            const SizedBox(height: AppSpace.xxl),
+            Pressable(
               onTap: _save,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                constraints: const BoxConstraints(minHeight: 52),
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.orange,
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                 ),
-                child: const Center(
-                  child: Text(
-                    '저장',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
+                child: Text(
+                  '저장',
+                  style: AppText.body.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.card,
                   ),
                 ),
               ),
