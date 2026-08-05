@@ -61,7 +61,15 @@ class WaitCard extends StatelessWidget {
     }
 
     final minutes = waitMinutes;
-    if (minutes == null || minutes <= 0) {
+    if (minutes == null) {
+      // 값이 없는 것과 0은 다르다 — null을 "바로 충전"으로 내보내면
+      // 추정 불가(추적 공백·충전기 전체 고장)가 호객 문구로 둔갑한다.
+      // 15초 폴링이 돌므로 공백이 메워지면 화면도 스스로 돌아온다.
+      return [
+        Text(S.heroChecking, style: AppText.hero.copyWith(color: AppColors.orange)),
+      ];
+    }
+    if (minutes <= 0) {
       // 이 문장은 0분을 말로 쓴 것이다 — 숫자 "12"와 같은 값 자리라 같은 색을 쓴다.
       // "0분 기다려요"가 어색해서 표기만 바꿨을 뿐이다.
       // 근거 줄은 없다 — "기다리는 차가 없어요"는 결론을 되풀이할 뿐이다.

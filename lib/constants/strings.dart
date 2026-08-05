@@ -12,6 +12,10 @@ abstract final class S {
   static const heroPrefix = '약';
   static const heroSuffix = '분 기다려요';
   static const heroNoWait = '바로 충전할 수 있어요';
+
+  /// 서버가 대기시간을 추정할 수 없을 때(재시작 직후 등 추적 공백).
+  /// 모르는 값을 0분("바로 충전")으로 속이는 게 최악이라, 모름은 모름으로 말한다.
+  static const heroChecking = '대기 현황 확인 중이에요';
   static const heroClosed = '오늘 영업 끝났어요';
 
   static String heroOpensAt(String time) => '내일 $time에 열어요';
