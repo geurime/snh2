@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../constants/colors.dart';
+import '../../../constants/spacing.dart';
+import '../../../constants/typography.dart';
+import '../../../widgets/pressable.dart';
+import '../../../widgets/sheet_header.dart';
 import '../../../services/hydrogen_api.dart';
 
 class AnnouncementModal extends StatefulWidget {
@@ -63,7 +67,7 @@ class _AnnouncementModalState extends State<AnnouncementModal> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('공지사항이 저장되었습니다'),
-          backgroundColor: Color(0xFF4CAF50),
+          backgroundColor: AppColors.gray900,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -77,78 +81,51 @@ class _AnnouncementModalState extends State<AnnouncementModal> {
         padding: EdgeInsets.only(
           left: 20,
           right: 20,
-          top: 20,
+          top: 8,
           bottom: MediaQuery.of(context).viewInsets.bottom + 20,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.black.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+            const SheetHeader(
+              title: '공지사항',
+              subtitle: '빈 칸으로 저장하면 공지가 삭제됩니다',
             ),
-            const SizedBox(height: 20),
-            Center(
-              child: Text(
-                '공지사항',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.black,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Center(
-              child: Text(
-                '빈 칸으로 저장하면 공지가 삭제됩니다',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.black.withOpacity(0.5),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpace.xxl),
             TextField(
               controller: _controller,
               maxLines: 3,
+              style: AppText.body.copyWith(color: AppColors.gray900),
               decoration: InputDecoration(
-                hintText: '공지사항을 입력하세요',
-                hintStyle: TextStyle(color: AppColors.black.withOpacity(0.4)),
+                // 힌트를 두지 않는다 — 완결된 한국어 문장은 회색이어도
+                // "이미 등록된 공지"로 읽힌다. 이 칸 내용은 손님 화면에 그대로
+                // 나가서 오해 비용이 크다. 제목과 부연이 이미 용도를 말한다.
                 filled: true,
-                fillColor: AppColors.background,
+                fillColor: AppColors.gray100,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.all(16),
+                contentPadding: const EdgeInsets.all(AppSpace.lg),
               ),
             ),
-            const SizedBox(height: 24),
-            GestureDetector(
+            const SizedBox(height: AppSpace.xxl),
+            Pressable(
               onTap: _save,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                constraints: const BoxConstraints(minHeight: 52),
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.orange,
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                 ),
-                child: const Center(
-                  child: Text(
-                    '저장',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
+                child: Text(
+                  '저장',
+                  style: AppText.body.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.card,
                   ),
                 ),
               ),

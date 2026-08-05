@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 import '../../../constants/colors.dart';
+import '../../../constants/spacing.dart';
+import '../../../constants/typography.dart';
+import '../../../widgets/pressable.dart';
+import '../../../widgets/sheet_header.dart';
 import '../../../services/hydrogen_api.dart';
 
 class SalesInputModal extends StatefulWidget {
   final double? initialFlowMeter;
   final double? initialSalesKg;
   final int? initialSalesCount;
+
+  /// 서버가 미입력 날짜에도 `totalKg: 0, totalVehicles: 0`을 채워 보낸다.
+  /// null 체크만으로는 "아직 안 함"과 "0으로 입력함"이 구분되지 않아
+  /// 입력칸에 0이 미리 박히고, 직원이 매번 지우고 다시 쳐야 했다.
+  final bool hasRecord;
+
   final Function(double? flowMeter, double? salesKg, int? salesCount) onSave;
 
   const SalesInputModal({
@@ -13,6 +23,7 @@ class SalesInputModal extends StatefulWidget {
     this.initialFlowMeter,
     this.initialSalesKg,
     this.initialSalesCount,
+    this.hasRecord = false,
     required this.onSave,
   });
 
@@ -21,6 +32,7 @@ class SalesInputModal extends StatefulWidget {
     double? initialFlowMeter,
     double? initialSalesKg,
     int? initialSalesCount,
+    bool hasRecord = false,
     required Function(double? flowMeter, double? salesKg, int? salesCount)
         onSave,
   }) {
@@ -35,6 +47,7 @@ class SalesInputModal extends StatefulWidget {
         initialFlowMeter: initialFlowMeter,
         initialSalesKg: initialSalesKg,
         initialSalesCount: initialSalesCount,
+        hasRecord: hasRecord,
         onSave: onSave,
       ),
     );
@@ -54,14 +67,23 @@ class _SalesInputModalState extends State<SalesInputModal> {
   void initState() {
     super.initState();
     _flowMeterController = TextEditingController(
-      text: widget.initialFlowMeter?.toString() ?? '',
+      text: _trimZero(widget.initialFlowMeter),
     );
+    // 레코드가 없으면 값이 와도 서버가 채운 0이므로 빈 칸으로 둔다.
     _salesKgController = TextEditingController(
-      text: widget.initialSalesKg?.toString() ?? '',
+      text: widget.hasRecord ? _trimZero(widget.initialSalesKg) : '',
     );
     _salesCountController = TextEditingController(
-      text: widget.initialSalesCount?.toString() ?? '',
+      text: widget.hasRecord ? (widget.initialSalesCount?.toString() ?? '') : '',
     );
+  }
+
+  /// 394.0kg처럼 소수점이 없는 값은 정수로 — 편집할 때 `.0`을 지우는 손이 준다.
+  static String _trimZero(double? v) {
+    if (v == null) return '';
+    return v == v.roundToDouble()
+        ? v.toStringAsFixed(0)
+        : v.toString();
   }
 
   @override
@@ -90,7 +112,7 @@ class _SalesInputModalState extends State<SalesInputModal> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('판매량과 충전 대수를 입력해주세요'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.gray900,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -112,7 +134,7 @@ class _SalesInputModalState extends State<SalesInputModal> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('마감 데이터가 저장되었습니다'),
-          backgroundColor: Color(0xFF4CAF50),
+          backgroundColor: AppColors.gray900,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -126,41 +148,20 @@ class _SalesInputModalState extends State<SalesInputModal> {
         padding: EdgeInsets.only(
           left: 20,
           right: 20,
-          top: 20,
+          top: 8,
           bottom: MediaQuery.of(context).viewInsets.bottom + 20,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.black.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: Text(
-                '마감 입력',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.black,
-                ),
-              ),
-            ),
+            const SheetHeader(title: '마감 입력'),
             const SizedBox(height: 24),
             Text(
               '유량계 (kg)',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.black,
+              style: AppText.label.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.gray900,
               ),
             ),
             const SizedBox(height: 8),
@@ -169,11 +170,12 @@ class _SalesInputModalState extends State<SalesInputModal> {
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
+              style: AppText.body.copyWith(color: AppColors.gray900),
               decoration: InputDecoration(
-                hintText: '유량계 값 입력',
-                hintStyle: TextStyle(color: AppColors.black.withOpacity(0.4)),
+                hintText: '428001',
+                hintStyle: AppText.body.copyWith(color: AppColors.gray600),
                 filled: true,
-                fillColor: AppColors.background,
+                fillColor: AppColors.gray100,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -187,9 +189,9 @@ class _SalesInputModalState extends State<SalesInputModal> {
                         padding: const EdgeInsets.only(right: 12),
                         child: Text(
                           '6자리가 아닙니다',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.red.shade400,
+                          style: AppText.label.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.orangeText,
                           ),
                         ),
                       )
@@ -200,10 +202,9 @@ class _SalesInputModalState extends State<SalesInputModal> {
             const SizedBox(height: 16),
             Text(
               '판매량 (kg)',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.black,
+              style: AppText.label.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.gray900,
               ),
             ),
             const SizedBox(height: 8),
@@ -211,11 +212,12 @@ class _SalesInputModalState extends State<SalesInputModal> {
               controller: _salesKgController,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
+              style: AppText.body.copyWith(color: AppColors.gray900),
               decoration: InputDecoration(
-                hintText: '판매량 입력',
-                hintStyle: TextStyle(color: AppColors.black.withOpacity(0.4)),
+                hintText: '394',
+                hintStyle: AppText.body.copyWith(color: AppColors.gray600),
                 filled: true,
-                fillColor: AppColors.background,
+                fillColor: AppColors.gray100,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -229,21 +231,21 @@ class _SalesInputModalState extends State<SalesInputModal> {
             const SizedBox(height: 16),
             Text(
               '충전 대수',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: AppColors.black,
+              style: AppText.label.copyWith(
+                fontWeight: FontWeight.w700,
+                color: AppColors.gray900,
               ),
             ),
             const SizedBox(height: 8),
             TextField(
               controller: _salesCountController,
               keyboardType: TextInputType.number,
+              style: AppText.body.copyWith(color: AppColors.gray900),
               decoration: InputDecoration(
-                hintText: '충전 대수 입력',
-                hintStyle: TextStyle(color: AppColors.black.withOpacity(0.4)),
+                hintText: '78',
+                hintStyle: AppText.body.copyWith(color: AppColors.gray600),
                 filled: true,
-                fillColor: AppColors.background,
+                fillColor: AppColors.gray100,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -255,23 +257,21 @@ class _SalesInputModalState extends State<SalesInputModal> {
               ),
             ),
             const SizedBox(height: 24),
-            GestureDetector(
+            Pressable(
               onTap: _save,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                constraints: const BoxConstraints(minHeight: 52),
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.orange,
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                 ),
-                child: const Center(
-                  child: Text(
-                    '저장',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
+                child: Text(
+                  '저장',
+                  style: AppText.body.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.card,
                   ),
                 ),
               ),

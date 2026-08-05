@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 import '../../../constants/colors.dart';
+import '../../../constants/spacing.dart';
+import '../../../constants/typography.dart';
+import '../../../widgets/pressable.dart';
+import '../../../widgets/sheet_header.dart';
 import '../../../services/hydrogen_api.dart';
 
 class TTTodayModal extends StatefulWidget {
@@ -65,90 +69,62 @@ class _TTTodayModalState extends State<TTTodayModal> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.black.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
+            // 입력칸이 하나뿐이라 제목이 곧 질문이고, 스테퍼가 곧 답이다.
+            // 별도 필드 라벨('오늘 총 대수')은 제목과 같은 말이라 뺐다.
+            const SheetHeader(
+              title: '오늘 T/T 몇 대 쓰나요?',
+              subtitle: '지금 몇 번째인지는 잔압 변화로 자동 계산돼요',
             ),
-            const SizedBox(height: 20),
-            Text(
-              '오늘 T/T 설정',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.black,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '이후 잔압 변화로 자동 계산됩니다',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.black.withOpacity(0.5),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              '오늘 총 대수',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.black.withOpacity(0.6),
-              ),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpace.xxl),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                GestureDetector(
+                Pressable(
+                  scale: 0.9,
                   onTap: () {
                     if (_tempCount > 0) {
                       setState(() => _tempCount--);
                     }
                   },
                   child: Container(
-                    width: 48,
-                    height: 48,
+                    width: 52,
+                    height: 52,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
+                      color: AppColors.orangeTint,
+                      borderRadius: BorderRadius.circular(AppRadius.chip),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       LucideIcons.minus,
-                      color: AppColors.primary,
+                      color: AppColors.orangeText,
                     ),
                   ),
                 ),
                 const SizedBox(width: 32),
                 Text(
                   '$_tempCount',
-                  style: TextStyle(
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.black,
-                  ),
+                  style: AppText.display.copyWith(color: AppColors.gray900),
                 ),
                 const SizedBox(width: 32),
-                GestureDetector(
+                Pressable(
+                  scale: 0.9,
                   onTap: () {
                     setState(() => _tempCount++);
                   },
                   child: Container(
-                    width: 48,
-                    height: 48,
+                    width: 52,
+                    height: 52,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
+                      color: AppColors.orangeTint,
+                      borderRadius: BorderRadius.circular(AppRadius.chip),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       LucideIcons.plus,
-                      color: AppColors.primary,
+                      color: AppColors.orangeText,
                     ),
                   ),
                 ),
