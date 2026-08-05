@@ -85,6 +85,18 @@ flutter:
     - assets/cone_open.jpeg
 
   fonts:
+    # UI 전체 서체. 위계는 크기·굵기·색으로 만든다 (SIL OFL, 상업 이용 가능)
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/Pretendard-Regular.otf
+          weight: 400
+        - asset: assets/fonts/Pretendard-Medium.otf
+          weight: 500
+        - asset: assets/fonts/Pretendard-Bold.otf
+          weight: 700
+        - asset: assets/fonts/Pretendard-ExtraBold.otf
+          weight: 800
+    # 앱 아이콘·스플래시 등 브랜딩 자리에만 남긴다. UI 안에서는 쓰지 않는다.
     - family: Badasseugi
       fonts:
         - asset: assets/fonts/Hakgyoansim Badasseugi OTF B.otf
