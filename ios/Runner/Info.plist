@@ -45,10 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<string>kakaomap</string>
-		<string>nmap</string>
-	</array>
+	<!-- HTTPS와 키체인만 쓴다. 직접 구현한 암호화가 없어 수출 규정 면제 대상이고,
+	     이 키가 있으면 업로드할 때마다 묻지 않는다. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
