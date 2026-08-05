@@ -141,19 +141,31 @@ enum ChargerStatus {
 ```
 lib/
 ├── main.dart
-├── constants/
-│   ├── colors.dart        # 컬러 토큰
-│   ├── typography.dart    # 타입 스케일
-│   ├── spacing.dart       # 간격 · 라운드 · 모션
-│   └── strings.dart       # UI 문자열
+├── constants/             # 토큰. 여기 없는 값을 화면에서 만들지 않는다
+│   ├── colors.dart
+│   ├── typography.dart
+│   ├── spacing.dart       # 간격 · 아이콘 · 라운드 · 그림자 · 모션
+│   └── strings.dart       # UI 문자열 · 운영 기준값(55bar 등)
 ├── screens/
 │   ├── home/              # 손님 화면 (한 장)
-│   ├── faq/
-│   └── admin/             # 직원 화면
+│   │   ├── widgets/       # 이 화면에서만 쓰는 카드·배너
+│   │   ├── dialogs/       # 진입 안내 · 영업종료 · 관리자 비번
+│   │   └── skeletons/
+│   ├── admin/             # 직원 화면
+│   │   ├── widgets/
+│   │   └── modals/        # T/T · 매출 입력 · 공지
+│   ├── faq_screen.dart
+│   └── sales_report_screen.dart
 ├── providers/
 ├── services/
-└── widgets/               # 화면 공용 위젯
+│   ├── analytics.dart
+│   ├── api/               # Dio 래퍼 · 예외
+│   └── hydrogen/          # 도메인 모델
+└── widgets/               # 화면 공용 (Pressable · SheetHeader · StateToggle)
 ```
+
+**한 화면에서만 쓰는 위젯은 그 화면 폴더에 둔다.** `lib/widgets/`는 두 화면
+이상이 실제로 쓰는 것만 올라간다 — 미리 올려두면 어디서 쓰는지 추적이 안 된다.
 
 ---
 
@@ -170,17 +182,36 @@ lib/
 |---|---|---|
 | 최강 | 모달 다이얼로그 | 영업 종료 |
 | 강 | 배너 (히어로 위) | 충전기 고장 · 공지 |
-| 중 | 카드 배경 틴트 | 마지막 T/T |
-| 약 | 글씨 색 | 강조 텍스트 |
+| 중 | 카드 배경 틴트 | 관리 화면의 임계 초과 지표 |
+| 약 | 글씨 색 | 마지막 T/T · 강조 텍스트 |
 
 오렌지는 네 단계에 **똑같이** 쓰인다. 얼마나 급한지는 모달인지 배너인지가 말한다.
+
+**②-1 손님 화면에서는 카드 배경을 물들이지 않는다. 글씨색만 바꾼다.**
+
+배경 틴트는 관리 화면 전용이다. 이유가 둘이다.
+
+- 손님 화면은 카드가 넷뿐이라 한 장이 물들면 **화면의 1/4이 경고색**이 된다.
+  마지막 T/T는 "못 온다"가 아니라 "서두르면 된다"인데 강도가 과해진다.
+- 옥외에서 본다. 연한 틴트(`orangeTint`) 위 무채색 글씨는 햇빛 아래서
+  대비가 무너진다. 흰 배경에 `orangeText`(5.15:1)가 훨씬 안전하다.
+
+관리 화면은 사무실 안이고 카드가 열 장 넘게 쌓여서, 배경이 갈려야 훑을 때 걸린다.
+
+```dart
+// Good — 손님 화면. 배경은 흰색 고정, 색은 글씨가 진다
+final accent = isLastTT ? AppColors.orangeText : AppColors.gray900;
+
+// Bad — 손님 화면에서 카드를 물들임
+color: isLastTT ? AppColors.orangeTint : AppColors.card,
+```
 
 **③ 아무도 안 물어보는 정상 상태는 숨긴다.**
 충전기·세차장이 정상이면 화면에 없다. 이상할 때만 나타난다.
 단, **손님이 습관적으로 확인하는 항목**(잔압)은 정상이어도 상시 노출한다. 숨기면 다른 앱을 켜게 된다.
 
 **④ 결론을 크게, 근거를 작게.**
-`약 7분 기다려요`(54px)가 결론, `승용 2대 · 버스 1대`(12.5px)가 근거.
+`약 7분 기다려요`(52px)가 결론, `승용 2대 · 버스 1대`(15px)가 근거.
 손님이 해독해야 하는 중간 데이터(`3대 중 2번째`)는 화면에 두지 않는다.
 
 **④-1 관리 화면은 배치 기준이 다르다.**
@@ -254,25 +285,35 @@ static const stateEmpty = gray600;            // 빈통     5.20:1
 ```dart
 // lib/constants/typography.dart
 abstract final class AppText {
-  static const display = TextStyle(fontSize: 54, fontWeight: FontWeight.w800, letterSpacing: -1.4, height: 1.0);
-  static const h1      = TextStyle(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.6);
-  static const h2      = TextStyle(fontSize: 21, fontWeight: FontWeight.w700, letterSpacing: -0.2);
-  static const h3      = TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700);
-  static const body    = TextStyle(fontSize: 14.5, fontWeight: FontWeight.w500);
-  static const small   = TextStyle(fontSize: 12.5);
-  static const label   = TextStyle(fontSize: 11.5);
+  static const fontFamily = 'Pretendard';
+
+  static const display     = 52; // 대기시간 숫자
+  static const hero        = 28; // 히어로 문장 · 영업종료 제목
+  static const number      = 22; // 잔압 · 대수 같은 갱신되는 숫자
+  static const sentence    = 22; // 카드 안 결론 문장
+  static const screenTitle = 22; // 화면 제목
+  static const title       = 19; // 카드 제목
+  static const body        = 17; // 본문 · 버튼
+  static const lead        = 17; // 굵은 본문
+  static const label       = 15; // 캡션 · 근거
+  static const tag         = 15; // 상태 칩
 }
 ```
 
-- 스케일에 없는 크기를 즉석에서 쓰지 않는다
+- 크기는 **여섯 개**뿐이다 (52 / 28 / 22 / 19 / 17 / 15). 스케일에 없는 값을 즉석에서 쓰지 않는다
+- 이름이 열 개인데 크기가 여섯인 건 **역할이 다르면 이름을 나눠야 나중에 한쪽만 바꿀 수 있어서**다.
+  `number`와 `sentence`는 지금 둘 다 22지만 같은 것이 아니다
 - **숫자가 갱신되는 곳은 `FontFeature.tabularFigures()`** — 15초마다 바뀌는데 폭이 흔들리면 화면이 떨린다
 
-#### 서체 역할 분담
+#### 서체는 하나다
 
-- **Badasseugi (손글씨)** — 앱이 손님에게 *말을 거는* 부분에만. 제목, `지금 오시면`, `분 기다려요`
-- **시스템 서체** — 숫자와 데이터 전부. 손글씨 숫자는 야외 가독성이 떨어진다
+UI 전체가 **Pretendard**다. 위계는 서체가 아니라 **크기·굵기·색**으로 만든다.
 
-손글씨가 말을 걸고, 숫자는 또렷하게 읽힌다. 섞지 말 것.
+손글씨체(Badasseugi)를 섞었더니 같은 `fontSize`를 줘도 글자가 다르게 보였다 —
+서체마다 x-height와 글자 폭이 달라서, 크기를 맞추면 무게가 어긋나고
+무게를 맞추면 크기가 어긋난다. 야외 가독성도 손글씨가 떨어진다.
+
+Badasseugi는 앱 아이콘 등 **브랜딩 자리에만** 남긴다. UI 안에서는 쓰지 않는다.
 
 ### 간격 · 라운드 · 모션
 
@@ -282,8 +323,19 @@ abstract final class AppSpace {
   static const xs = 4.0, sm = 8.0, md = 12.0, lg = 16.0, xl = 20.0, xxl = 24.0;
 }
 
+abstract final class AppIcon {
+  static const sm = 16.0, md = 18.0, lg = 20.0;  // 옆에 붙는 글씨에 맞춘다
+}
+
 abstract final class AppRadius {
-  static const card = 20.0, banner = 14.0, chip = 12.0, pill = 999.0;
+  static const card = 20.0, banner = 14.0, chip = 12.0, pill = 999.0, tiny = 6.0;
+}
+
+/// 그림자는 **떠 있는 것에만**. 바닥에 놓인 카드는 쓰지 않는다 —
+/// 회색 배경 위 흰 카드라 면이 이미 갈리고,
+/// 아무 데나 쓰면 "떠 있다"는 신호 자체가 무의미해진다.
+abstract final class AppShadow {
+  static const floating = [BoxShadow(color: Color(0x1F30313A), blurRadius: 18, offset: Offset(0, 4))];
 }
 
 abstract final class AppMotion {
@@ -402,6 +454,40 @@ T/T의 `사용 중`은 백엔드가 잔압으로 자동 판정하므로 **토글
 const kClosingPressureBar = 55;
 ```
 
+### 서버는 값이 없어도 0을 채워 보낸다 (★ 같은 버그를 세 번 냈다)
+
+미입력 날짜에도 `totalKg: 0`, `carCount: 0`이 온다. **값으로 "입력됐나"를 판정하면
+진짜 0kg으로 마감한 날이 미입력으로 빠진다.** 레코드 존재 여부로 판정한다.
+
+```dart
+// Bad — 0으로 마감한 날이 사라진다
+final closed = (sales?['totalKg'] ?? 0) > 0;
+
+// Good — 레코드가 있으면 입력된 것
+final closed = sales?['id'] != null;
+```
+
+같은 이유로 **입력 폼에 0·0.0을 미리 채우지 않는다.** 지우고 다시 쓰게 만들고,
+지우다 만 값이 그대로 저장된다. 빈칸이 "아직 안 넣음"을 정확히 표현한다.
+
+### 진입을 지연시키는 것을 두지 않는다
+
+매일 여는 앱이다. 스플래시 화면은 **없다** — 로고를 0.1초 보여주려고
+첫 화면을 늦출 이유가 없다. 브랜딩은 앱 아이콘이 이미 한다.
+
+같은 이유로 진입 애니메이션도 없다 (애니메이션 절 참조).
+
+### Analytics는 "지울지 판단할 화면"에만 붙인다
+
+이벤트를 화면마다 깔면 나중에 어떤 숫자가 의미 있는지 구분이 안 된다.
+손님 화면은 잴 게 없다 — 설치가 전원 현장 QR이라 유입 경로가 하나고,
+대기시간을 보러 온다는 것도 이미 안다.
+
+현재 이벤트는 `sales_report_opened` **하나뿐**이다. 매출 추이를 직원이
+실제로 여는지 몰라서, 없앨 근거도 남길 근거도 없는 상태다.
+
+전송 실패는 삼킨다. 옥외에서 전파가 끊기는데 통계 때문에 화면이 멈추면 안 된다.
+
 ---
 
 ## 상태 관리
@@ -474,8 +560,11 @@ flutter analyze
 - 대기시간을 "약" 없이 표시
 - `앞에 N대` 표현
 - 손님 화면에 충전기 A/B · T/T 순번 노출
-- 진입 애니메이션 · 숫자 카운트업
+- 손님 화면 카드 배경을 물들이기 (글씨색만 바꾼다)
+- 진입 애니메이션 · 숫자 카운트업 · 스플래시 화면
 - 상태에 따라 카드 **순서** 바꾸기
+- 서버 값이 `0`인 걸 "입력됨"으로 읽기 (`id` 존재로 판정)
+- 입력 폼에 `0` · `0.0` 미리 채우기
 - `build()` 안에서 API 호출 · `setState`
 - 주석 처리된 코드 커밋 · 미사용 import · `// TODO` 방치
 - `Co-Authored-By` 커밋 메시지
@@ -493,5 +582,6 @@ flutter analyze
 - [ ] 숫자 갱신부에 `tabularFigures`
 - [ ] `disableAnimationsOf` 존중
 - [ ] 네트워크 실패 시 직전 값 유지
+- [ ] 값 없음을 `0` · `false`로 떨어뜨리지 않음
 - [ ] 도메인 규칙 위반 없음 (잔압 게이지 · "약" · A/B 노출 · 순번 노출)
-- [ ] 커밋 메시지에 **왜**가 있음
+- [ ] 커밋 메시지에 **왜**가 있음, `Co-Authored-By` 없음
