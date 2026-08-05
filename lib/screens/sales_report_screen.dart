@@ -5,6 +5,7 @@ import 'package:lucide_icons/lucide_icons.dart';
 import '../constants/colors.dart';
 import '../constants/spacing.dart';
 import '../constants/typography.dart';
+import '../services/analytics.dart';
 import '../services/hydrogen_api.dart';
 import '../widgets/pressable.dart';
 
@@ -38,6 +39,8 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   @override
   void initState() {
     super.initState();
+    // 이 화면을 직원이 실제로 여는지 몰라서 남길지 지울지 못 정하고 있다.
+    Analytics.salesReportOpened();
     final now = DateTime.now();
     _selectedYear = now.year;
     _selectedMonth = now.month;
