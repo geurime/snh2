@@ -50,7 +50,10 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
 
-    final stats = await _api.getMonthlySalesStats(_selectedYear, _selectedMonth);
+    final stats = await _api.getMonthlySalesStats(
+      _selectedYear,
+      _selectedMonth,
+    );
 
     // 오늘 마감이 끝났으면 오늘까지, 아니면 어제까지.
     // 판정은 값이 아니라 레코드 존재 여부로 한다 — 서버가 미입력 날짜에도
@@ -58,8 +61,9 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
     final today = DateTime.now();
     final todaySales = await _api.getSales(_formatDate(today));
     final closedToday = todaySales?['id'] != null;
-    final endDate =
-        closedToday ? today : today.subtract(const Duration(days: 1));
+    final endDate = closedToday
+        ? today
+        : today.subtract(const Duration(days: 1));
     final weekly = await _api.getSalesRange(
       _formatDate(endDate.subtract(const Duration(days: 6))),
       _formatDate(endDate),
@@ -105,30 +109,37 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
           ),
         ],
       ),
+      // 본문에 SafeArea가 없어 마지막 카드가 내비게이션 바에 가렸다.
+      // (시트의 SafeArea와 별개다 — 상단은 AppBar가 처리하므로 하단만)
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.orange))
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpace.xl,
-                AppSpace.xs,
-                AppSpace.xl,
-                AppSpace.xxl,
-              ),
-              children: [
-                _buildSummary(),
-                const SizedBox(height: AppSpace.xl),
-                Padding(
-                  padding: const EdgeInsets.only(
-                    left: AppSpace.xs,
-                    bottom: AppSpace.sm,
-                  ),
-                  child: Text(
-                    '최근 7일',
-                    style: AppText.tag.copyWith(color: AppColors.gray600),
-                  ),
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.orange),
+            )
+          : SafeArea(
+              top: false,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpace.xl,
+                  AppSpace.xs,
+                  AppSpace.xl,
+                  AppSpace.xxl,
                 ),
-                _buildTrend(),
-              ],
+                children: [
+                  _buildSummary(),
+                  const SizedBox(height: AppSpace.xl),
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: AppSpace.xs,
+                      bottom: AppSpace.sm,
+                    ),
+                    child: Text(
+                      '최근 7일',
+                      style: AppText.tag.copyWith(color: AppColors.gray600),
+                    ),
+                  ),
+                  _buildTrend(),
+                ],
+              ),
             ),
     );
   }
@@ -240,10 +251,8 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
               showTitles: true,
               interval: maxKg / 2,
               reservedSize: 44,
-              getTitlesWidget: (value, _) => Text(
-                '${value.toInt()}',
-                style: labelStyle,
-              ),
+              getTitlesWidget: (value, _) =>
+                  Text('${value.toInt()}', style: labelStyle),
             ),
           ),
           bottomTitles: AxisTitles(
@@ -285,10 +294,7 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
                 strokeWidth: 0,
               ),
             ),
-            belowBarData: BarAreaData(
-              show: true,
-              color: AppColors.orangeTint,
-            ),
+            belowBarData: BarAreaData(show: true, color: AppColors.orangeTint),
           ),
         ],
         lineTouchData: LineTouchData(
@@ -320,7 +326,9 @@ class _SalesReportScreenState extends State<SalesReportScreen> {
       context: context,
       backgroundColor: AppColors.card,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppRadius.card),
+        ),
       ),
       builder: (sheetContext) => SafeArea(
         child: Padding(
@@ -480,7 +488,10 @@ class _Stat extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            Text(value, style: AppText.number.copyWith(color: AppColors.gray900)),
+            Text(
+              value,
+              style: AppText.number.copyWith(color: AppColors.gray900),
+            ),
             const SizedBox(width: 2),
             Text(
               unit,

@@ -82,16 +82,21 @@ class FaqScreen extends StatelessWidget {
           style: AppText.screenTitle.copyWith(color: AppColors.gray900),
         ),
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpace.xl,
-          AppSpace.xs,
-          AppSpace.xl,
-          AppSpace.xxl,
+      // FAQ만 SafeArea가 빠져 있어 마지막 카드가 내비게이션 바에 가렸다.
+      // 상단은 AppBar가 이미 처리하므로 하단만 지킨다.
+      body: SafeArea(
+        top: false,
+        child: ListView.separated(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpace.xl,
+            AppSpace.xs,
+            AppSpace.xl,
+            AppSpace.xxl,
+          ),
+          itemCount: _items.length,
+          separatorBuilder: (context, index) => const SizedBox(height: AppSpace.md),
+          itemBuilder: (_, i) => _Card(item: _items[i]),
         ),
-        itemCount: _items.length,
-        separatorBuilder: (context, index) => const SizedBox(height: AppSpace.md),
-        itemBuilder: (_, i) => _Card(item: _items[i]),
       ),
     );
   }
