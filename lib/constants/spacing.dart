@@ -34,6 +34,12 @@ abstract final class AppRadius {
   static const card = 20.0;
   static const banner = 14.0;
   static const chip = 12.0;
+
+  /// 높이의 절반보다 크기만 하면 되는 알약 모양 (모드 전환·상태 토글).
+  static const pill = 999.0;
+
+  /// 체크박스처럼 22px 안팎의 작은 사각형.
+  static const tiny = 6.0;
 }
 
 /// 그림자는 **떠 있는 것에만** 쓴다.

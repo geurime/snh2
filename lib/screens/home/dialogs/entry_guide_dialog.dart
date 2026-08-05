@@ -193,7 +193,7 @@ class _DontShowAgain extends StatelessWidget {
               height: 22,
               decoration: BoxDecoration(
                 color: checked ? AppColors.orange : Colors.transparent,
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: BorderRadius.circular(AppRadius.tiny),
                 border: Border.all(
                   color: checked ? AppColors.orange : AppColors.gray300,
                   width: 1.5,

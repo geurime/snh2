@@ -51,7 +51,7 @@ class StateToggle extends StatelessWidget {
             DecoratedBox(
               decoration: BoxDecoration(
                 color: AppColors.gray100,
-                borderRadius: BorderRadius.circular(999),
+                borderRadius: BorderRadius.circular(AppRadius.pill),
               ),
               child: const SizedBox.expand(),
             ),
@@ -66,7 +66,7 @@ class StateToggle extends StatelessWidget {
                   height: _height - _pad * 2,
                   decoration: BoxDecoration(
                     color: AppColors.card,
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
                     boxShadow: const [
                       BoxShadow(
                         color: Color(0x2430313A),

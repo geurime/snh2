@@ -41,7 +41,7 @@ class SalesInputModal extends StatefulWidget {
       isScrollControlled: true,
       backgroundColor: AppColors.card,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
       ),
       builder: (context) => SalesInputModal(
         initialFlowMeter: initialFlowMeter,
@@ -177,7 +177,7 @@ class _SalesInputModalState extends State<SalesInputModal> {
                 filled: true,
                 fillColor: AppColors.gray100,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                   borderSide: BorderSide.none,
                 ),
                 contentPadding: const EdgeInsets.symmetric(
@@ -186,7 +186,7 @@ class _SalesInputModalState extends State<SalesInputModal> {
                 ),
                 suffixIcon: _isFlowMeterInvalid
                     ? Padding(
-                        padding: const EdgeInsets.only(right: 12),
+                        padding: const EdgeInsets.only(right: AppSpace.md),
                         child: Text(
                           '6자리가 아닙니다',
                           style: AppText.label.copyWith(
@@ -219,7 +219,7 @@ class _SalesInputModalState extends State<SalesInputModal> {
                 filled: true,
                 fillColor: AppColors.gray100,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                   borderSide: BorderSide.none,
                 ),
                 contentPadding: const EdgeInsets.symmetric(
@@ -247,7 +247,7 @@ class _SalesInputModalState extends State<SalesInputModal> {
                 filled: true,
                 fillColor: AppColors.gray100,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(AppRadius.chip),
                   borderSide: BorderSide.none,
                 ),
                 contentPadding: const EdgeInsets.symmetric(

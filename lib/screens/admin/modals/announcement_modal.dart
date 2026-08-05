@@ -26,7 +26,7 @@ class AnnouncementModal extends StatefulWidget {
       isScrollControlled: true,
       backgroundColor: AppColors.card,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
       ),
       builder: (context) => AnnouncementModal(
         initialAnnouncement: initialAnnouncement,
@@ -79,10 +79,10 @@ class _AnnouncementModalState extends State<AnnouncementModal> {
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 8,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          left: AppSpace.xl,
+          right: AppSpace.xl,
+          top: AppSpace.sm,
+          bottom: MediaQuery.of(context).viewInsets.bottom + AppSpace.xl,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

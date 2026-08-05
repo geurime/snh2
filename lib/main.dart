@@ -171,7 +171,7 @@ class _ModeSwitch extends StatelessWidget {
       padding: const EdgeInsets.all(_pad),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppRadius.pill),
         boxShadow: AppShadow.floating,
       ),
       child: SizedBox(
@@ -189,7 +189,7 @@ class _ModeSwitch extends StatelessWidget {
                 height: _segmentHeight,
                 decoration: BoxDecoration(
                   color: AppColors.orangeTint,
-                  borderRadius: BorderRadius.circular(999),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
                 ),
               ),
             ),
